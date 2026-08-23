@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Keep the SHA-pinned actions current; without this they never get bumped.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  # Same for the hook revs, which are pinned just as hard and just as invisible.
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: weekly
