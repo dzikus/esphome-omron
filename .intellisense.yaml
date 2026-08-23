@@ -1,0 +1,101 @@
+# Compile target for IntelliSense only. The devcontainer builds it once so
+# gen-cpp-properties.py can read the include paths and defines out of
+# .esphome/build/omron-intellisense; nothing here is ever flashed.
+#
+# Deliberately free of !secret so it compiles in a fresh clone, where
+# secrets.yaml does not exist. The MAC is the all-zero placeholder.
+esphome:
+  name: omron-intellisense
+  min_version: 2026.5.1
+  # Two people, two sub-devices: the same shape the real configuration uses, so
+  # the per-user codegen path is the one that gets compiled.
+  devices:
+    - id: cuff_device
+      name: "Cuff"
+    - id: user1_device
+      name: "Cuff user 1"
+    - id: user2_device
+      name: "Cuff user 2"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+# A dummy network satisfies config validation for api. Nothing connects at build
+# time; this is here so the with-api code path is the one that compiles.
+wifi:
+  ssid: "esphome-ci"
+  password: "esphome-ci-password"
+
+api:
+
+# Present so the USE_TIME branches are the ones that get compiled; without a
+# time platform the clock-drift code is preprocessed away and never checked.
+time:
+  - platform: sntp
+    id: probe_time
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [omron]
+
+esp32_ble_tracker:
+
+omron:
+  - id: cuff_probe
+    mac_address: 00:00:00:00:00:00
+    profile: hem_7155t_mw3
+    keep_bond: false
+    time_id: probe_time
+    device_id: cuff_device
+    users:
+      - user: 1
+        device_id: user1_device
+        name_prefix: Alex
+        birth_date: 1948-03-09
+        write_birth_date: true
+      - user: 2
+        device_id: user2_device
+
+sensor:
+  - platform: omron
+    omron_id: cuff_probe
+  - platform: omron
+    omron_id: cuff_probe
+    user: 1
+  - platform: omron
+    omron_id: cuff_probe
+    user: 2
+
+binary_sensor:
+  - platform: omron
+    omron_id: cuff_probe
+  - platform: omron
+    omron_id: cuff_probe
+    user: 1
+  - platform: omron
+    omron_id: cuff_probe
+    user: 2
+
+text_sensor:
+  - platform: omron
+    omron_id: cuff_probe
+  - platform: omron
+    omron_id: cuff_probe
+    user: 1
+  - platform: omron
+    omron_id: cuff_probe
+    user: 2
+
+button:
+  - platform: omron
+    omron_id: cuff_probe
+
+switch:
+  - platform: omron
+    omron_id: cuff_probe

@@ -1,0 +1,124 @@
+# Compile target for CI. Every entity platform is listed so each codegen path
+# is exercised, including the per-user split and the two-cuff name prefix.
+# Deliberately free of !secret so it builds in a fresh clone.
+
+# Overridden per matrix entry with `esphome -s board <name> compile`. The
+# default is the classic xtensa part; the workflow also builds an S3 and the
+# two riscv variants, which carry a different radio and a different toolchain.
+substitutions:
+  board: esp32dev
+
+esphome:
+  name: ci-build
+  # The oldest release this component compiles against, and the version the
+  # workflow's floor job builds. BLEClientBase::on_disconnect_complete, which
+  # OmronBLEClient overrides, does not exist before it.
+  min_version: 2026.5.1
+  devices:
+    - id: cuff_device
+      name: "Cuff"
+    - id: user1_device
+      name: "Cuff user 1"
+    - id: user2_device
+      name: "Cuff user 2"
+    - id: second_cuff_device
+      name: "CI second cuff"
+
+esp32:
+  board: ${board}
+  framework:
+    type: esp-idf
+
+logger:
+
+wifi:
+  ssid: "esphome-ci"
+  password: "esphome-ci-password"
+
+api:
+
+# Present so the USE_TIME branches compile; without a time platform the
+# clock-drift code is preprocessed away and never checked.
+time:
+  - platform: sntp
+    id: probe_time
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [omron]
+
+esp32_ble_tracker:
+
+omron:
+  - id: cuff_probe
+    mac_address: 00:00:00:00:00:00
+    profile: hem_7155t_mw3
+    keep_bond: false
+    time_id: probe_time
+    full_read_on_pairing: true
+    device_id: cuff_device
+    users:
+      # Named, so the prefix comes from here.
+      - user: 1
+        device_id: user1_device
+        name_prefix: Alex
+        # Before 1970 on purpose: the cuff stores 1900 onwards and the schema
+        # has to match it, not the epoch.
+        birth_date: 1948-03-09
+        write_birth_date: true
+      # Unnamed, so the prefix falls back to the sub-device's own name. Both
+      # paths have to build, and the two must not collide.
+      - user: 2
+        device_id: user2_device
+  # A classic-transport profile, so the bindkey branch and the pair button both
+  # compile rather than only the token path. No users block: the prefix then
+  # falls back to the cuff id, which is the third path.
+  - id: cuff_second
+    mac_address: 00:00:00:00:00:01
+    profile: hem_7155t
+    bindkey: "deadbeaf12341234deadbeaf12341234"
+    device_id: second_cuff_device
+
+sensor:
+  - platform: omron
+    omron_id: cuff_probe
+  - platform: omron
+    omron_id: cuff_probe
+    user: 1
+  - platform: omron
+    omron_id: cuff_probe
+    user: 2
+  - platform: omron
+    omron_id: cuff_second
+
+binary_sensor:
+  - platform: omron
+    omron_id: cuff_probe
+  - platform: omron
+    omron_id: cuff_probe
+    user: 1
+  - platform: omron
+    omron_id: cuff_probe
+    user: 2
+
+text_sensor:
+  - platform: omron
+    omron_id: cuff_probe
+  - platform: omron
+    omron_id: cuff_probe
+    user: 1
+  - platform: omron
+    omron_id: cuff_probe
+    user: 2
+
+button:
+  - platform: omron
+    omron_id: cuff_probe
+  - platform: omron
+    omron_id: cuff_second
+
+switch:
+  - platform: omron
+    omron_id: cuff_probe

@@ -1,0 +1,119 @@
+# A complete node for one cuff shared by two people.
+#
+# Put the cuff's address in secrets.yaml as omron_mac. Everything below the
+# omron: block is optional; delete the platforms you do not want.
+
+esphome:
+  name: omron-cuff
+  min_version: 2026.5.1
+  # Sub-devices keep each person's measurements in their own Home Assistant
+  # device, so the two histories stay apart. These names are also where the
+  # entity names come from: with two people on one cuff, user 1's readings
+  # publish as "Alex systolic" and user 2's as "Sam systolic".
+  devices:
+    - id: cuff_device
+      name: "Cuff"
+    - id: user1_device
+      name: "Alex"
+    - id: user2_device
+      name: "Sam"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_key
+  # Older readings leave as events; without this they are logged only.
+  homeassistant_services: true
+
+ota:
+  - platform: esphome
+
+# The cuff writes its own clock from this. SNTP rather than the Home Assistant
+# time platform: the clock is written in the first session after boot, which can
+# happen before Home Assistant has connected.
+time:
+  - platform: sntp
+    id: node_time
+
+external_components:
+  - source: github://dzikus/esphome-omron
+    components: [omron]
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+    interval: 320ms
+    window: 300ms
+
+omron:
+  - id: omron_cuff
+    mac_address: !secret omron_mac
+    # `auto` takes the model from the cuff itself. Name a profile instead if
+    # detection reports it cannot tell yours apart - the log says which.
+    profile: auto
+    time_id: node_time
+    # Registers this node with the cuff as that person. Without it the cuff
+    # drops its half of the bond and every later session fails to reconnect.
+    register_as_user: 2
+    # Readings older than this are dropped whole. A cuff whose clock was never
+    # set stamps everything with one default date; set this above the day you
+    # first set the clock.
+    ignore_records_before: 2020-01-01
+    # The cuff's own entities: signal strength, poll duration, model.
+    device_id: cuff_device
+    # Each person once. A platform block then only says which user it is for,
+    # so adding a domain does not mean repeating any of this.
+    users:
+      - user: 1
+        device_id: user1_device
+      - user: 2
+        device_id: user2_device
+
+# One platform block per person, plus one without `user:` for the cuff itself.
+sensor:
+  - platform: omron
+    omron_id: omron_cuff
+  - platform: omron
+    omron_id: omron_cuff
+    user: 1
+  - platform: omron
+    omron_id: omron_cuff
+    user: 2
+
+binary_sensor:
+  - platform: omron
+    omron_id: omron_cuff
+  - platform: omron
+    omron_id: omron_cuff
+    user: 1
+  - platform: omron
+    omron_id: omron_cuff
+    user: 2
+
+text_sensor:
+  - platform: omron
+    omron_id: omron_cuff
+  - platform: omron
+    omron_id: omron_cuff
+    user: 1
+  - platform: omron
+    omron_id: omron_cuff
+    user: 2
+
+button:
+  - platform: omron
+    omron_id: omron_cuff
+
+switch:
+  - platform: omron
+    omron_id: omron_cuff
