@@ -5,38 +5,10 @@
 
 namespace esphome::omron {
 
-static constexpr uint8_t REQUEST_READ_HIGH = 0x01;
-static constexpr uint8_t REQUEST_READ_LOW = 0x00;
 static constexpr uint8_t REQUEST_WRITE_HIGH = 0x01;
 static constexpr uint8_t REQUEST_WRITE_LOW = 0xC0;
 static constexpr size_t RESPONSE_PAYLOAD_OFFSET = 6;
 static constexpr size_t LEGACY_CHANNEL_WIDTH = 16;
-
-uint8_t xor_bytes(std::span<const uint8_t> data) {
-  uint8_t result = 0;
-  for (const uint8_t value : data)
-    result ^= value;
-  return result;
-}
-
-std::array<uint8_t, 8> make_read_request(uint16_t address, uint8_t length) {
-  std::array<uint8_t, 8> request{
-      0x08,
-      REQUEST_READ_HIGH,
-      REQUEST_READ_LOW,
-      static_cast<uint8_t>(address >> 8),
-      static_cast<uint8_t>(address & 0xFF),
-      length,
-      0x00,
-      0x00,
-  };
-  request.back() = xor_bytes(std::span<const uint8_t>(request).first(request.size() - 1));
-  return request;
-}
-
-std::array<uint8_t, 8> make_start_request() {
-  return {0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x18};
-}
 
 std::vector<uint8_t> make_write_request(uint16_t address, std::span<const uint8_t> data) {
   std::vector<uint8_t> request;
@@ -54,10 +26,6 @@ std::vector<uint8_t> make_write_request(uint16_t address, std::span<const uint8_
   request.push_back(0x00);
   request.push_back(xor_bytes(request));
   return request;
-}
-
-std::array<uint8_t, 8> make_end_request() {
-  return {0x08, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07};
 }
 
 ProtocolError parse_response(std::span<const uint8_t> frame, ResponseFrame &response) {
@@ -101,13 +69,6 @@ ProtocolError parse_response(std::span<const uint8_t> frame, ResponseFrame &resp
     response.data.assign(payload.begin(), payload.end());
   }
   return ProtocolError::NONE;
-}
-
-std::array<uint8_t, 20> make_token_request(const std::array<uint8_t, 4> &nonce) {
-  std::array<uint8_t, 20> request{};
-  request[0] = 0x11;
-  std::ranges::copy(nonce, request.begin() + 1);
-  return request;
 }
 
 ProtocolError validate_token_response(std::span<const uint8_t> response, const std::array<uint8_t, 4> &nonce) {

@@ -68,23 +68,51 @@ inline constexpr size_t READ_RESPONSE_OVERHEAD = 8;
 // Where the address sits in every request and every response, big endian in
 // both directions whatever the endianness of the records behind it.
 inline constexpr size_t FRAME_ADDRESS_OFFSET = 3;
+inline constexpr uint8_t REQUEST_READ_HIGH = 0x01;
+inline constexpr uint8_t REQUEST_READ_LOW = 0x00;
 
-uint8_t xor_bytes(std::span<const uint8_t> data);
+constexpr uint8_t xor_bytes(std::span<const uint8_t> data) {
+  uint8_t result = 0;
+  for (const uint8_t value : data)
+    result ^= value;
+  return result;
+}
 
-std::array<uint8_t, 8> make_start_request();
-std::array<uint8_t, 8> make_read_request(uint16_t address, uint8_t length);
-std::array<uint8_t, 8> make_end_request();
+constexpr std::array<uint8_t, 8> sealed_frame(std::array<uint8_t, 8> frame) {
+  frame.back() = xor_bytes(std::span<const uint8_t>(frame).first(frame.size() - 1));
+  return frame;
+}
+
+constexpr std::array<uint8_t, 8> make_start_request() {
+  return sealed_frame({0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00});
+}
+
+constexpr std::array<uint8_t, 8> make_read_request(uint16_t address, uint8_t length) {
+  return sealed_frame({0x08, REQUEST_READ_HIGH, REQUEST_READ_LOW, static_cast<uint8_t>(address >> 8),
+                       static_cast<uint8_t>(address & 0xFF), length, 0x00, 0x00});
+}
+
+constexpr std::array<uint8_t, 8> make_end_request() {
+  return sealed_frame({0x08, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+}
+
+// The session token: twenty bytes, an opcode, four of nonce and padding, and a
+// reply that echoes the nonce back. Stateless, so a fresh nonce each session is
+// the whole of it. Named for what it is rather than for a model, because every
+// profile on the modern stack opens this way.
+constexpr std::array<uint8_t, 20> make_token_request(const std::array<uint8_t, 4> &nonce) {
+  std::array<uint8_t, 20> request{};
+  request[0] = 0x11;
+  for (size_t i = 0; i < nonce.size(); i++)
+    request[i + 1] = nonce[i];
+  return request;
+}
 // Empty on refusal. Callers must not choose the address freely: use the
 // purpose-built wrapper that derives it from the profile.
 std::vector<uint8_t> make_write_request(uint16_t address, std::span<const uint8_t> data);
 
 ProtocolError parse_response(std::span<const uint8_t> frame, ResponseFrame &response);
 
-// The session token: twenty bytes, an opcode, four of nonce and padding, and a
-// reply that echoes the nonce back. Stateless, so a fresh nonce each session is
-// the whole of it. Named for what it is rather than for a model, because every
-// profile on the modern stack opens this way.
-std::array<uint8_t, 20> make_token_request(const std::array<uint8_t, 4> &nonce);
 ProtocolError validate_token_response(std::span<const uint8_t> response, const std::array<uint8_t, 4> &nonce);
 
 class OmronFrameAssembler {

@@ -154,13 +154,17 @@ static void assert_measurement_values(const OmronProfile &profile, const OmronMe
 }
 
 static void test_protocol_requests_and_parsing() {
-  const std::array<uint8_t, 8> expected_read{0x08, 0x01, 0x00, 0x02, 0x60, 0x26, 0x00, 0x4D};
-  const std::array<uint8_t, 8> expected_start{0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x18};
-  const std::array<uint8_t, 8> expected_end{0x08, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07};
-  assert(make_read_request(0x0260, 0x26) == expected_read);
-  assert(make_start_request() == expected_start);
-  assert(make_end_request() == expected_end);
-  assert(xor_bytes(expected_read) == 0);
+  constexpr std::array<uint8_t, 8> expected_read{0x08, 0x01, 0x00, 0x02, 0x60, 0x26, 0x00, 0x4D};
+  constexpr std::array<uint8_t, 8> expected_start{0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x18};
+  constexpr std::array<uint8_t, 8> expected_end{0x08, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07};
+  static_assert(make_read_request(0x0260, 0x26) == expected_read);
+  static_assert(make_start_request() == expected_start);
+  static_assert(make_end_request() == expected_end);
+  static_assert(xor_bytes(expected_read) == 0);
+  static_assert(xor_bytes(make_start_request()) == 0);
+  static_assert(xor_bytes(make_end_request()) == 0);
+  static_assert(make_token_request({0xDE, 0xAD, 0xBE, 0xEF})[0] == 0x11);
+  static_assert(make_token_request({0xDE, 0xAD, 0xBE, 0xEF})[4] == 0xEF);
 
   // Captured from a real HEM-7155T in reply to make_start_request().
   // Byte 5 is the echoed transfer block size, not a payload length; parsing it as
