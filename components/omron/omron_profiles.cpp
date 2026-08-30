@@ -318,7 +318,7 @@ static const char *const HEM_7511T_ALIASES[] = {
 
 static constexpr OmronUserMemoryLayout UNUSED_USER = {0, 0, 0, 0, 0, 0};
 
-static const OmronProfile PROFILE_CATALOG[] = {
+static constexpr OmronProfile PROFILE_CATALOG[] = {
     {
         .id = OmronProfileId::UNSUPPORTED,
         .model = "UNSUPPORTED",

@@ -25,6 +25,8 @@ jobs:
           set -euo pipefail
           bash tests/run_protocol_tests.sh | tee test-output.txt
           grep -q '^ok: [0-9]\+ test groups passed$' test-output.txt
+      - name: Run codegen unit tests (release gate)
+        run: python -m unittest discover -s tests/python -v
       - name: Compile full component (release gate)
         run: bash tests/check_esp32_warnings.sh .github/ci-build.yaml esp32dev
       - name: Publish GitHub release

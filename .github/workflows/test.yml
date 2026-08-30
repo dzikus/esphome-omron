@@ -114,6 +114,8 @@ jobs:
           restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
       - name: Install ESPHome
         run: pip install "esphome==${{ env.ESPHOME_VERSION }}"
+      - name: Run codegen unit tests
+        run: python -m unittest discover -s tests/python -v
       - name: Compile every board, failing on any warning from the component
         run: |
           set -euo pipefail
