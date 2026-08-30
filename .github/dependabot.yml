@@ -10,3 +10,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # The devcontainer base image and its feature pins, which nothing else reads.
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
+  - package-ecosystem: devcontainers
+    directory: /
+    schedule:
+      interval: weekly
