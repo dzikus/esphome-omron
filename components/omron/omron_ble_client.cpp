@@ -23,11 +23,11 @@ namespace {
 
 int8_t hex_nibble(char value) {
   if (value >= '0' && value <= '9')
-    return value - '0';
+    return static_cast<int8_t>(value - '0');
   if (value >= 'a' && value <= 'f')
-    return value - 'a' + 10;
+    return static_cast<int8_t>(value - 'a' + 10);
   if (value >= 'A' && value <= 'F')
-    return value - 'A' + 10;
+    return static_cast<int8_t>(value - 'A' + 10);
   return -1;
 }
 
@@ -350,7 +350,7 @@ bool OmronBLEClient::parse_device(const esp32_ble_tracker::ESPBTDevice &device) 
     if (!this->rssi_published_ || now - this->rssi_published_at_ >= RSSI_PUBLISH_INTERVAL_MS) {
       this->rssi_published_ = true;
       this->rssi_published_at_ = now;
-      this->entities_.publish_rssi_entity_(device.get_rssi());
+      this->entities_.publish_rssi_entity_(static_cast<float>(device.get_rssi()));
     }
   }
   if (!this->ble_user_enabled_)
@@ -964,12 +964,16 @@ bool OmronBLEClient::subscribe_standard_measurement_(bool required) {
 // Service and characteristic, because the last of these is not device
 // information at all: 0x2A49 is the standard Blood Pressure Feature, the one
 // statement about detections a cuff makes without being identified first.
+namespace {
 struct DeviceInformationRead {
   uint16_t service;
   uint16_t characteristic;
 };
-static constexpr DeviceInformationRead DEVICE_INFORMATION_CHARACTERISTICS[] = {
-    {0x180A, 0x2A24}, {0x180A, 0x2A26}, {0x180A, 0x2A25}, {0x1810, 0x2A49}};
+constexpr DeviceInformationRead DEVICE_INFORMATION_CHARACTERISTICS[] = {{.service = 0x180A, .characteristic = 0x2A24},
+                                                                        {.service = 0x180A, .characteristic = 0x2A26},
+                                                                        {.service = 0x180A, .characteristic = 0x2A25},
+                                                                        {.service = 0x1810, .characteristic = 0x2A49}};
+}  // namespace
 
 void OmronBLEClient::start_device_information_() {
   if (this->device_information_done_)
@@ -1332,17 +1336,15 @@ WriteDispatch OmronBLEClient::dispatch_next_write_() {
 
   const bool prefer_no_response =
       this->outgoing_prefer_no_response_ || (!unlock_channel && this->tx_handle_count_ == 1);
-  esp_gatt_write_type_t write_type;
-  if (prefer_no_response && (properties & ESP_GATT_CHAR_PROP_BIT_WRITE_NR) != 0) {
-    write_type = ESP_GATT_WRITE_TYPE_NO_RSP;
-  } else if ((properties & ESP_GATT_CHAR_PROP_BIT_WRITE) != 0) {
-    write_type = ESP_GATT_WRITE_TYPE_RSP;
-  } else if ((properties & ESP_GATT_CHAR_PROP_BIT_WRITE_NR) != 0) {
-    write_type = ESP_GATT_WRITE_TYPE_NO_RSP;
-  } else {
+  const bool accepts_no_response = (properties & ESP_GATT_CHAR_PROP_BIT_WRITE_NR) != 0;
+  const bool accepts_response = (properties & ESP_GATT_CHAR_PROP_BIT_WRITE) != 0;
+  if (!accepts_no_response && !accepts_response) {
     ESP_LOGE(TAG, "[%s] Selected GATT characteristic is not writable", this->address_str());
     return WriteDispatch::FAILED;
   }
+  const esp_gatt_write_type_t write_type = (accepts_no_response && (prefer_no_response || !accepts_response))
+                                               ? ESP_GATT_WRITE_TYPE_NO_RSP
+                                               : ESP_GATT_WRITE_TYPE_RSP;
 
   // Deliberately never dumps the unlock characteristic. On classic profiles that
   // write carries the 16-byte bind key, and a debug log is not a place for it.
@@ -1539,7 +1541,7 @@ void OmronBLEClient::configure_session_() {
 }
 
 std::string OmronBLEClient::format_local_datetime_(const OmronDateTime &value) const {
-  const std::string naive = format_datetime(value);
+  std::string naive = format_datetime(value);
 #ifdef USE_TIME
   // The offset in force on the record's own date, not today's. Taking today's
   // would stamp a July reading with the January offset every winter, and the
@@ -1582,7 +1584,7 @@ HarvestRequest OmronBLEClient::build_harvest_request_() {
   request.cutoff_set = this->ignore_before_set_;
   request.cutoff_epoch = this->ignore_before_epoch_;
   request.history_records = this->history_records_;
-  for (size_t user = 0; user < OMRON_MAX_USERS && user < OMRON_ENTITY_USER_SLOTS; user++)
+  for (size_t user = 0; user < OMRON_MAX_USERS; user++)
     request.watermark[user] = this->history_.watermark(static_cast<uint8_t>(user));
   OmronDateTime now{};
   if (this->session_wall_clock(now)) {
@@ -1602,7 +1604,7 @@ void OmronBLEClient::finalize_record_transaction_() {
 
   // In order: what the ring gave up and what it owes as events, then the cuff's
   // clock, then the entity values.
-  for (uint8_t user_index = 0; user_index < OMRON_ENTITY_USER_SLOTS && user_index < OMRON_MAX_USERS; user_index++) {
+  for (uint8_t user_index = 0; user_index < OMRON_MAX_USERS; user_index++) {
     const HarvestedUser &user = harvest[user_index];
 
     // One line a session, not one a record: at INFO, where a per-slot debug
@@ -1660,7 +1662,7 @@ void OmronBLEClient::finalize_record_transaction_() {
 
   uint8_t users_decoded = 0;
   uint8_t users_published = 0;
-  for (uint8_t user_index = 0; user_index < OMRON_ENTITY_USER_SLOTS && user_index < OMRON_MAX_USERS; user_index++) {
+  for (uint8_t user_index = 0; user_index < OMRON_MAX_USERS; user_index++) {
     const HarvestedUser &user = harvest[user_index];
     if (!user.valid)
       continue;
@@ -1835,7 +1837,7 @@ void OmronBLEClient::finish_diagnostics_(bool success) {
     return;
   const uint32_t now = millis();
   this->diagnostics_.finish_session(now, success);
-  this->entities_.publish_poll_duration_entity_(this->diagnostics_.last_poll_duration_ms / 1000.0f);
+  this->entities_.publish_poll_duration_entity_(static_cast<float>(this->diagnostics_.last_poll_duration_ms) / 1000.0f);
   this->session_started_ = false;
   // Which rings this session may claim to have collected: the session owns that
   // memory, because it is the thing that decides whether to read them again.

@@ -1,6 +1,7 @@
 #include "omron_protocol.h"
 
 #include <algorithm>
+#include <cstddef>
 
 namespace esphome::omron {
 
@@ -13,7 +14,7 @@ static constexpr size_t LEGACY_CHANNEL_WIDTH = 16;
 
 uint8_t xor_bytes(std::span<const uint8_t> data) {
   uint8_t result = 0;
-  for (uint8_t value : data)
+  for (const uint8_t value : data)
     result ^= value;
   return result;
 }
@@ -172,7 +173,7 @@ AssembleResult OmronFrameAssembler::try_assemble_() {
     const size_t remaining = frame_size - this->frame_.size();
     const size_t take = this->fragments_[channel].size() < remaining ? this->fragments_[channel].size() : remaining;
     this->frame_.insert(this->frame_.end(), this->fragments_[channel].begin(),
-                        this->fragments_[channel].begin() + take);
+                        this->fragments_[channel].begin() + static_cast<std::ptrdiff_t>(take));
   }
   if (this->frame_.size() != frame_size) {
     this->error_ = ProtocolError::LENGTH_MISMATCH;

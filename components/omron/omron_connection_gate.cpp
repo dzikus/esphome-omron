@@ -10,7 +10,7 @@ void OmronConnectionGate::reset(bool requires_os_bond) {
   this->failed_ = false;
 }
 
-ConnectionAction OmronConnectionGate::on_connect() {
+ConnectionAction OmronConnectionGate::on_connect() const {
   return this->requires_os_bond_ ? ConnectionAction::START_SECURITY : ConnectionAction::NONE;
 }
 
@@ -34,7 +34,7 @@ ConnectionAction OmronConnectionGate::on_auth_complete(bool success, bool bonded
   return this->maybe_start_discovery_();
 }
 
-ConnectionAction OmronConnectionGate::maybe_start_discovery_() {
+ConnectionAction OmronConnectionGate::maybe_start_discovery_() const {
   if (!this->failed_ && this->open_ok_ && this->auth_ok_ && !this->discovery_started_)
     return ConnectionAction::START_DISCOVERY;
   return ConnectionAction::NONE;

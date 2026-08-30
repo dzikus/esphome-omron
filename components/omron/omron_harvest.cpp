@@ -21,7 +21,7 @@ struct KeptRecords {
 KeptRecords read_user_ring(const HarvestRequest &request, const UserRecordPlan &plan) {
   KeptRecords kept;
   const UserPollLayout &user_layout = request.layout->users[plan.user];
-  for (uint16_t slot : plan.slots) {
+  for (const uint16_t slot : plan.slots) {
     uint16_t address = 0;
     if (!record_address(user_layout.ring, slot, address)) {
       kept.unreadable++;
@@ -100,8 +100,7 @@ HarvestResult harvest_records(const HarvestRequest &request) {
 
     // Oldest first from here, so Home Assistant receives them in the order they
     // happened and the watermark only ever moves forward.
-    std::sort(kept.records.begin(), kept.records.end(),
-              [](const HarvestedRecord &lhs, const HarvestedRecord &rhs) { return lhs.epoch < rhs.epoch; });
+    std::ranges::sort(kept.records, {}, &HarvestedRecord::epoch);
 
     int64_t newest_reported = user.watermark;
     for (HarvestedRecord &record : kept.records) {
