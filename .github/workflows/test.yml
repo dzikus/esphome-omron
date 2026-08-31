@@ -121,7 +121,7 @@ jobs:
           key: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-${{ matrix.arch }}
           restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
       - name: Install ESPHome
-        run: pip install "esphome==${{ env.ESPHOME_VERSION }}"
+        run: pip install "esphome==${ESPHOME_VERSION}"
       - name: Run codegen unit tests
         run: python -m unittest discover -s tests/python -v
       - name: Compile every board, failing on any warning from the component
@@ -152,7 +152,7 @@ jobs:
           key: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-xtensa
           restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-
       - name: Install ESPHome (component floor)
-        run: pip install "esphome==${{ env.ESPHOME_FLOOR }}"
+        run: pip install "esphome==${ESPHOME_FLOOR}"
       - name: Provide dummy secrets for the example
         run: |
           cat > secrets.yaml <<'EOF'
