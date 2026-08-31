@@ -6,6 +6,7 @@ on:
   pull_request:
     paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", "example.yaml", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
   workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 env:
