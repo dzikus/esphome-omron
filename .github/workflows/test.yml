@@ -2,9 +2,9 @@ name: tests
 on:
   push:
     branches: [main]
-    paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
+    paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", "example.yaml", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
   pull_request:
-    paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
+    paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", "example.yaml", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
   workflow_call:
 permissions:
   contents: read
@@ -152,9 +152,18 @@ jobs:
           restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-
       - name: Install ESPHome (component floor)
         run: pip install "esphome==${{ env.ESPHOME_FLOOR }}"
-      - name: Validate CI and IntelliSense configs
+      - name: Provide dummy secrets for the example
+        run: |
+          cat > secrets.yaml <<'EOF'
+          wifi_ssid: ci
+          wifi_password: ci-password-123
+          api_key: cJlpAFA6N5wBzUgFSpMSo8QVMXZzKXwUBG6oHtGOb6Q=
+          omron_mac: AA:BB:CC:DD:EE:FF
+          EOF
+      - name: Validate example, CI and IntelliSense configs
         run: |
           set -euo pipefail
+          esphome config example.yaml
           esphome config .github/ci-build.yaml
           esphome config .intellisense.yaml
       # A compile, not a config check. Validation only exercises the Python
