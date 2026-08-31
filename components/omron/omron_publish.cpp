@@ -210,9 +210,9 @@ const char *poll_outcome_status(const HarvestResult &harvest, uint8_t users_deco
 
   uint16_t unparsed = 0;
   uint16_t dropped = 0;
-  for (size_t user = 0; user < harvest.size(); user++) {
-    unparsed = static_cast<uint16_t>(unparsed + harvest[user].unparsed);
-    dropped = static_cast<uint16_t>(dropped + harvest[user].dropped_before_cutoff);
+  for (const HarvestedUser &user : harvest) {
+    unparsed = static_cast<uint16_t>(unparsed + user.unparsed);
+    dropped = static_cast<uint16_t>(dropped + user.dropped_before_cutoff);
   }
   // Order matters: a ring that gave up bytes which decoded to nothing is the
   // diagnosis worth surfacing first, because it is the one that means the

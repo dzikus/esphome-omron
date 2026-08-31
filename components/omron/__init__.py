@@ -489,8 +489,8 @@ def _entity_users_must_exist(config):
             if isinstance(number, int) and number > count:
                 raise cv.Invalid(
                     f"{domain} block is configured for user {number}, but profile "
-                    f"{config.get(CONF_PROFILE)} stores {count} user(s). Those entities "
-                    f"would never publish anything."
+                    f"{config.get(CONF_PROFILE)} stores {count} user(s). Those "
+                    f"entities would never publish anything."
                 )
     return config
 

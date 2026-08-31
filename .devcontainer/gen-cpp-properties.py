@@ -211,6 +211,7 @@ def main():
         "compilerArgs": ["-mlongcalls"],
         "cStandard": "gnu17",
         "cppStandard": "gnu++20",
+        "intelliSenseMode": "linux-gcc-x64",
         "includePath": ["${workspaceFolder}/components/**"],
         "browse": {
             "path": ["${workspaceFolder}/components/**"],

@@ -76,9 +76,9 @@ const OmronProfile *best_evidence_for_map(const OmronProfile &resolved) {
 }
 
 const OmronTradeName *trade_name_for(std::string_view reported) {
-  for (size_t i = 0; i < TRADE_NAME_COUNT; i++) {
-    if (equals_folded(TRADE_NAMES[i].name, reported))
-      return &TRADE_NAMES[i];
+  for (const OmronTradeName &entry : TRADE_NAMES) {
+    if (equals_folded(entry.name, reported))
+      return &entry;
   }
   return nullptr;
 }
@@ -181,10 +181,11 @@ ModelIdentification identify_model(std::string_view reported, OmronStack stack) 
     for (uint8_t i = 0; i < result.known_candidates; i++) {
       if (stack_of(*known[i]) != stack)
         continue;
-      if (matched == nullptr)
+      if (matched == nullptr) {
         matched = known[i];
-      else if (!same_record_memory_map(*matched, *known[i]))
+      } else if (!same_record_memory_map(*matched, *known[i])) {
         unique = false;
+      }
     }
     if (matched != nullptr && unique) {
       result.identity = ModelIdentity::RESOLVED;
@@ -226,12 +227,13 @@ std::string profile_config_key(const OmronProfile &profile) {
     return key;
   for (const char *cursor = profile.model; *cursor != '\0'; cursor++) {
     const char value = *cursor;
-    if (value == '-')
+    if (value == '-') {
       key.push_back('_');
-    else if (value >= 'A' && value <= 'Z')
+    } else if (value >= 'A' && value <= 'Z') {
       key.push_back(static_cast<char>(value - 'A' + 'a'));
-    else
+    } else {
       key.push_back(value);
+    }
   }
   return key;
 }

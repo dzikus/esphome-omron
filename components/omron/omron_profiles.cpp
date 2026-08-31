@@ -43,7 +43,7 @@ const OmronGattCapabilities OMRON_MODERN_GATT = {
 };
 
 template <size_t N>
-constexpr size_t alias_count(const char *const (&)[N]) {
+static constexpr size_t alias_count(const char *const (&)[N]) {
   return N;
 }
 
@@ -318,7 +318,7 @@ static const char *const HEM_7511T_ALIASES[] = {
 
 static constexpr OmronUserMemoryLayout UNUSED_USER = {0, 0, 0, 0, 0, 0};
 
-static const OmronProfile PROFILE_CATALOG[] = {
+static constexpr OmronProfile PROFILE_CATALOG[] = {
     {
         .id = OmronProfileId::UNSUPPORTED,
         .model = "UNSUPPORTED",
@@ -1616,9 +1616,9 @@ static bool model_equals(const char *candidate, std::string_view model) {
 }
 
 const OmronProfile &get_profile(OmronProfileId id) {
-  for (size_t i = 0; i < PROFILE_CATALOG_SIZE; i++) {
-    if (PROFILE_CATALOG[i].id == id)
-      return PROFILE_CATALOG[i];
+  for (const OmronProfile &profile : PROFILE_CATALOG) {
+    if (profile.id == id)
+      return profile;
   }
   return PROFILE_CATALOG[0];
 }

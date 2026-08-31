@@ -2,11 +2,14 @@ name: tests
 on:
   push:
     branches: [main]
-    paths: ["components/omron/**", "tests/**", ".github/**", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format"]
+    paths: ["components/omron/**", "tests/**", ".github/**", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
   pull_request:
-    paths: ["components/omron/**", "tests/**", ".github/**", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format"]
+    paths: ["components/omron/**", "tests/**", ".github/**", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
 permissions:
   contents: read
+env:
+  ESPHOME_VERSION: "2026.8.1"
+  ESPHOME_FLOOR: "2026.5.1"
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -16,14 +19,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
+          cache: pip
       - name: Cache pre-commit
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/.cache/pre-commit
           key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -38,7 +42,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
       # The runner builds with g++ and -Werror, so a missing confidence field on
@@ -49,72 +53,107 @@ jobs:
           bash tests/run_protocol_tests.sh | tee test-output.txt
           # rc=0 without the closing line means the binary stopped early.
           grep -q '^ok: [0-9]\+ test groups passed$' test-output.txt
-  esphome-build:
-    name: esphome compile (${{ matrix.board }})
-    needs: unit-tests
+  clang-tidy:
+    name: clang-tidy (esp32 compile database)
+    needs: lint
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Cache PlatformIO
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/esphome
+          key: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-riscv-tidy
+          restore-keys: |
+            ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-riscv
+            ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
+      - name: Install ESPHome and clang-tidy
+        run: pip install "esphome==${{ env.ESPHOME_VERSION }}" "clang-tidy==22.1.8"
+      - name: Run clang-tidy
+        run: CI_CONFIG=.github/ci-build.yaml bash tests/run_clang_tidy.sh
+  esphome-build:
+    name: esphome compile (${{ matrix.arch }})
+    needs: unit-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         # Both instruction sets and three radios. The component is written
         # against Bluedroid rather than anything xtensa, so a riscv part
         # breaking would be a surprise - which is the reason to build one.
-        board:
-          - esp32dev
-          - esp32-s3-devkitc-1
-          - esp32-c3-devkitm-1
-          - esp32-c6-devkitc-1
+        include:
+          - arch: xtensa
+            boards: esp32dev esp32-s3-devkitc-1
+          - arch: riscv
+            boards: esp32-c3-devkitm-1 esp32-c6-devkitc-1
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
+          cache: pip
       - name: Cache PlatformIO
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          path: ~/.platformio
-          # Keyed on the board as well: these entries hold a whole toolchain
-          # each, and two targets sharing one key evict each other every run.
-          key: ${{ runner.os }}-esphome-${{ matrix.board }}-${{ hashFiles('.github/ci-build.yaml') }}
-          restore-keys: ${{ runner.os }}-esphome-${{ matrix.board }}-
+          path: |
+            ~/.platformio
+            ~/.cache/esphome
+          key: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-${{ matrix.arch }}
+          restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
       - name: Install ESPHome
-        run: pip install "esphome==2026.8.0"
-      - name: Compile full component
+        run: pip install "esphome==${{ env.ESPHOME_VERSION }}"
+      - name: Run codegen unit tests
+        run: python -m unittest discover -s tests/python -v
+      - name: Compile every board, failing on any warning from the component
         run: |
           set -euo pipefail
-          esphome -s board ${{ matrix.board }} compile .github/ci-build.yaml
-  build-floor:
-    name: esphome compile at the declared floor
-    needs: unit-tests
+          for board in ${{ matrix.boards }}; do
+            bash tests/check_esp32_warnings.sh .github/ci-build.yaml "$board"
+          done
+  config-build-floor:
+    name: config check and build at the ESPHome floor
+    needs: lint
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
+          cache: pip
       - name: Cache PlatformIO
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          path: ~/.platformio
-          key: ${{ runner.os }}-esphome-floor-${{ hashFiles('.github/ci-build.yaml') }}
-          restore-keys: ${{ runner.os }}-esphome-floor-
-      # Pinned to min_version, so the floor is a compiled claim rather than a
-      # number in a yaml.
+          path: |
+            ~/.platformio
+            ~/.cache/esphome
+          key: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-xtensa
+          restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-
       - name: Install ESPHome (component floor)
-        run: pip install "esphome==2026.5.1"
+        run: pip install "esphome==${{ env.ESPHOME_FLOOR }}"
+      - name: Validate CI and IntelliSense configs
+        run: |
+          set -euo pipefail
+          esphome config .github/ci-build.yaml
+          esphome config .intellisense.yaml
       # A compile, not a config check. Validation only exercises the Python
       # layer, and every version constraint this component actually has is in
       # the C++: it subclasses BLEClientBase and overrides hooks that arrived in
       # particular releases. A floor checked by `esphome config` alone reads as
       # verified while being wrong by several releases.
       - name: Compile at the floor
-        run: |
-          set -euo pipefail
-          esphome config .intellisense.yaml
-          esphome compile .github/ci-build.yaml
+        run: esphome compile .github/ci-build.yaml

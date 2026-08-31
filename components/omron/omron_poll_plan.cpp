@@ -50,7 +50,7 @@ bool build_record_plan(const PollLayout &layout, std::span<const uint8_t> index_
     return false;
   plans.clear();
 
-  for (uint8_t user_index = 0; user_index < layout.users.size(); user_index++) {
+  for (size_t user_index = 0; user_index < layout.users.size(); user_index++) {
     const UserPollLayout &user = layout.users[user_index];
     if (!user.enabled)
       continue;
@@ -63,7 +63,7 @@ bool build_record_plan(const PollLayout &layout, std::span<const uint8_t> index_
       return false;
 
     UserRecordPlan plan;
-    plan.user = user_index;
+    plan.user = static_cast<uint8_t>(user_index);
     plan.raw_cursor = raw_cursor;
     uint16_t requested = static_cast<uint16_t>(1 + layout.backtrack_records);
 
@@ -94,8 +94,8 @@ bool build_record_plan(const PollLayout &layout, std::span<const uint8_t> index_
     // contiguous. Sort addresses for efficient transfer, while retaining the
     // original slot order above for newest-record selection.
     std::vector<uint16_t> sorted_slots = plan.slots;
-    std::sort(sorted_slots.begin(), sorted_slots.end());
-    for (uint16_t slot : sorted_slots) {
+    std::ranges::sort(sorted_slots);
+    for (const uint16_t slot : sorted_slots) {
       if (slot == newest_slot)
         continue;
       if (!add_slot_read(user, slot, plan.reads))

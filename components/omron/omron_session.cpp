@@ -325,10 +325,11 @@ void OmronSession::begin_index_transaction_() {
   }
 
   TransactionUnlock unlock = TransactionUnlock::NONE;
-  if (profile->unlock_mode == UnlockMode::CLASSIC_KEY)
+  if (profile->unlock_mode == UnlockMode::CLASSIC_KEY) {
     unlock = TransactionUnlock::CUSTOM_KEY;
-  else if (profile->unlock_mode == UnlockMode::TOKEN_KEY)
+  } else if (profile->unlock_mode == UnlockMode::TOKEN_KEY) {
     unlock = TransactionUnlock::TOKEN_KEY;
+  }
   (void)this->begin_transaction_(PollPhase::INDEX, unlock);
 }
 
@@ -611,12 +612,13 @@ bool OmronSession::build_record_reads_() {
     return !read_everything && plan.user < USER_SLOTS && this->has_polled_cursor_[plan.user] &&
            this->polled_cursor_[plan.user] == plan.raw_cursor;
   });
-  if (skipped != 0)
+  if (skipped != 0) {
     OMRON_LOG_D(TAG, "[%s] %u user ring(s) unchanged since the last session; not re-reading them",
                 this->host_->session_address(), static_cast<unsigned>(skipped));
-  else if (read_everything)
+  } else if (read_everything) {
     OMRON_LOG_D(TAG, "[%s] Pairing mode: reading every ring whether or not its cursor moved",
                 this->host_->session_address());
+  }
 
   // The clock goes immediately behind the settings frame, before any record.
   // The cuff answers either order, so this is not correctness: the rule is that
@@ -776,15 +778,17 @@ bool OmronSession::maybe_queue_registration_writes_() {
                 format_hex_pretty(write.frame.data(), write.frame.size()).c_str());
   }
   this->clock_write_queued_ = true;
-  if (update.birth_date.has_value())
+  if (update.birth_date.has_value()) {
     OMRON_LOG_I(TAG, "[%s] Registration carries user %u birth date %04u-%02u-%02u", this->host_->session_address(),
                 static_cast<unsigned>(this->config_.register_as_user), static_cast<unsigned>(update.birth_date->year),
                 static_cast<unsigned>(update.birth_date->month), static_cast<unsigned>(update.birth_date->day));
-  if (update.clock.has_value())
+  }
+  if (update.clock.has_value()) {
     OMRON_LOG_I(TAG, "[%s] Setting the cuff clock to %04u-%02u-%02u %02u:%02u:%02u in the same run",
                 this->host_->session_address(), static_cast<unsigned>(clock.year), static_cast<unsigned>(clock.month),
                 static_cast<unsigned>(clock.day), static_cast<unsigned>(clock.hour),
                 static_cast<unsigned>(clock.minute), static_cast<unsigned>(clock.second));
+  }
   return true;
 }
 

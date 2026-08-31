@@ -190,9 +190,10 @@ void finalize_target_block(const OmronProfile &profile, uint8_t target_user, std
   if (!user_settings_block(profile, target_user, block))
     return;
   const size_t counter = block.offset + VERSION_IN_BLOCK;
-  for (size_t i = counter; i < counter + VERSION_SIZE; i++)
+  for (size_t i = counter; i < counter + VERSION_SIZE; i++) {
     if (++buffer[i] != 0)
       break;
+  }
   buffer[block_checksum_offset(block)] = block_checksum(buffer.data(), block);
 }
 

@@ -20,7 +20,7 @@ enum class [[nodiscard]] ConnectionAction : uint8_t {
 class OmronConnectionGate {
  public:
   void reset(bool requires_os_bond);
-  ConnectionAction on_connect();
+  ConnectionAction on_connect() const;
   ConnectionAction on_open(bool success);
   ConnectionAction on_auth_complete(bool success, bool bonded);
   void mark_discovery_started();
@@ -31,7 +31,7 @@ class OmronConnectionGate {
   bool failed() const { return this->failed_; }
 
  private:
-  ConnectionAction maybe_start_discovery_();
+  ConnectionAction maybe_start_discovery_() const;
 
   bool requires_os_bond_{false};
   bool open_ok_{false};

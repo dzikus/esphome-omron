@@ -137,12 +137,12 @@ static uint32_t fnv1a_byte(uint32_t hash, uint8_t value) {
 uint32_t measurement_fingerprint(std::string_view profile, uint8_t user, uint16_t address,
                                  std::span<const uint8_t> record) {
   uint32_t hash = 2166136261UL;
-  for (char value : profile)
+  for (const char value : profile)
     hash = fnv1a_byte(hash, static_cast<uint8_t>(value));
   hash = fnv1a_byte(hash, user);
   hash = fnv1a_byte(hash, static_cast<uint8_t>(address >> 8));
   hash = fnv1a_byte(hash, static_cast<uint8_t>(address & 0xFF));
-  for (uint8_t value : record)
+  for (const uint8_t value : record)
     hash = fnv1a_byte(hash, value);
   return hash;
 }

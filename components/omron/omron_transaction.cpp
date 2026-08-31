@@ -80,7 +80,7 @@ bool OmronTransaction::queue_write(uint16_t address, WriteFrameBuilder builder) 
   // Built once here as well, so the queue is never holding a promise it cannot
   // keep: a builder that fails at send time leaves this frame standing, and a
   // builder that fails now means there was never anything to queue.
-  std::vector<uint8_t> frame = builder();
+  const std::vector<uint8_t> frame = builder();
   if (!frame_targets(frame, address))
     return false;
   if (!this->queue_write(address, frame))
@@ -145,12 +145,13 @@ bool OmronTransaction::begin(TransactionUnlock unlock, const OmronBindKey &bind_
   this->stray_frames_ = 0;
   this->end_status_ = 0;
   this->error_ = ProtocolError::NONE;
-  if (unlock == TransactionUnlock::CUSTOM_KEY)
+  if (unlock == TransactionUnlock::CUSTOM_KEY) {
     this->state_ = TransactionState::KEY_PENDING;
-  else if (unlock == TransactionUnlock::TOKEN_KEY)
+  } else if (unlock == TransactionUnlock::TOKEN_KEY) {
     this->state_ = TransactionState::TOKEN_PENDING;
-  else
+  } else {
     this->state_ = TransactionState::START_PENDING;
+  }
   return true;
 }
 
@@ -324,20 +325,22 @@ void OmronTransaction::advance_after_start_() {
   this->attempt_ = 0;
   this->stray_frames_ = 0;
   this->read_index_ = 0;
-  if (!this->plan_.empty())
+  if (!this->plan_.empty()) {
     this->state_ = TransactionState::READ_PENDING;
-  else
+  } else {
     this->state_ = !this->writes_.empty() ? TransactionState::WRITE_PENDING : TransactionState::END_PENDING;
+  }
 }
 
 void OmronTransaction::advance_after_read_() {
   this->attempt_ = 0;
   this->stray_frames_ = 0;
   this->read_index_++;
-  if (this->read_index_ < this->plan_.size())
+  if (this->read_index_ < this->plan_.size()) {
     this->state_ = TransactionState::READ_PENDING;
-  else
+  } else {
     this->state_ = !this->writes_.empty() ? TransactionState::WRITE_PENDING : TransactionState::END_PENDING;
+  }
 }
 
 bool OmronTransaction::finish_without_end() {

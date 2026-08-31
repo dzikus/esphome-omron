@@ -30,6 +30,7 @@ esp32:
     type: esp-idf
 
 logger:
+  level: VERY_VERBOSE
 
 wifi:
   ssid: "esphome-ci"
