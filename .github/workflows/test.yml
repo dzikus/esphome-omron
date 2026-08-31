@@ -2,9 +2,9 @@ name: tests
 on:
   push:
     branches: [main]
-    paths: ["components/omron/**", "tests/**", ".github/**", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
+    paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
   pull_request:
-    paths: ["components/omron/**", "tests/**", ".github/**", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
+    paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
 permissions:
   contents: read
 env:
@@ -33,7 +33,10 @@ jobs:
           key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: ${{ runner.os }}-pre-commit-
       - name: Install pre-commit
-        run: pip install "pre-commit==4.6.0"
+        run: |
+          set -euo pipefail
+          pin="$(grep -E '^pre-commit==' .devcontainer/requirements.txt)"
+          pip install "${pin}"
       - name: Run pre-commit (ruff lint + format + hygiene)
         run: pre-commit run --all-files --show-diff-on-failure
   unit-tests:
@@ -77,7 +80,10 @@ jobs:
             ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-riscv
             ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
       - name: Install ESPHome and clang-tidy
-        run: pip install "esphome==${{ env.ESPHOME_VERSION }}" "clang-tidy==22.1.8"
+        run: |
+          set -euo pipefail
+          pin="$(grep -E '^clang-tidy==' .devcontainer/requirements.txt)"
+          pip install "esphome==${ESPHOME_VERSION}" "${pin}"
       - name: Run clang-tidy
         run: CI_CONFIG=.github/ci-build.yaml bash tests/run_clang_tidy.sh
   esphome-build:
