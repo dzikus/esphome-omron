@@ -172,7 +172,7 @@ bool apply_clock_fields(uint8_t *window, uint8_t fields_offset, const OmronDateT
 // before it. Nothing says the shorter blocks differ, and the checksum test below
 // refuses the write if they do.
 size_t block_checksum_offset(const OmronSettingsBlock &block) {
-  return block.offset + block.size - 2;
+  return static_cast<size_t>(block.offset) + block.size - 2;
 }
 
 uint8_t block_checksum(const uint8_t *settings, const OmronSettingsBlock &block) {

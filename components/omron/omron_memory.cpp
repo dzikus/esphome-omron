@@ -19,16 +19,16 @@ bool OmronMemoryImage::add_block(uint16_t address, std::span<const uint8_t> data
 bool OmronMemoryImage::contains(uint16_t address, size_t length) const {
   if (length == 0)
     return true;
-  const uint32_t requested_end = static_cast<uint32_t>(address) + length;
+  const size_t requested_end = static_cast<size_t>(address) + length;
   if (requested_end > 0x10000UL)
     return false;
 
-  uint32_t covered_until = address;
+  size_t covered_until = address;
   while (covered_until < requested_end) {
-    uint32_t best_end = covered_until;
+    size_t best_end = covered_until;
     for (const auto &block : this->blocks_) {
-      const uint32_t block_start = block.address;
-      const uint32_t block_end = block_start + block.data.size();
+      const size_t block_start = block.address;
+      const size_t block_end = block_start + block.data.size();
       if (block_start <= covered_until && block_end > best_end)
         best_end = block_end;
     }
@@ -51,8 +51,8 @@ bool OmronMemoryImage::read(uint16_t address, std::span<uint8_t> destination) co
     bool found = false;
     // Prefer the newest block when retry responses overlap an earlier block.
     for (const auto &block : this->blocks_ | std::views::reverse) {
-      const uint32_t start = block.address;
-      const uint32_t end = start + block.data.size();
+      const size_t start = block.address;
+      const size_t end = start + block.data.size();
       if (current >= start && current < end) {
         destination[offset] = block.data[current - start];
         found = true;

@@ -33,6 +33,12 @@ done
 # sets it in esphome/components/esp32/__init__.py. Anything that differs between
 # dialects - overload resolution, aggregate initialisation, implicit this
 # capture - is then tested in the language the node actually runs.
+g++ -std=gnu++20 -fsyntax-only -Wall -Wextra -Werror \
+  -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast \
+  -I"${repo_dir}/components/omron" \
+  -I"${repo_dir}/tests" \
+  "${source_paths[@]}"
+
 g++ -std=gnu++20 -Wall -Wextra -Werror \
   -I"${repo_dir}/components/omron" \
   -I"${repo_dir}/tests" \
