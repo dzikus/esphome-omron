@@ -3,32 +3,25 @@ on:
   push:
     tags: ["v*.*.*"]
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  release:
-    name: test gate and publish release
+  gates:
+    name: test gates
+    uses: ./.github/workflows/test.yml
+  publish:
+    name: publish release
+    needs: gates
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
-          python-version: "3.14"
-          cache: pip
-      - name: Install ESPHome
-        run: pip install "esphome==2026.8.1"
-      - name: Run protocol unit tests (release gate)
-        run: |
-          set -euo pipefail
-          bash tests/run_protocol_tests.sh | tee test-output.txt
-          grep -q '^ok: [0-9]\+ test groups passed$' test-output.txt
-      - name: Run codegen unit tests (release gate)
-        run: python -m unittest discover -s tests/python -v
-      - name: Compile full component (release gate)
-        run: bash tests/check_esp32_warnings.sh .github/ci-build.yaml esp32dev
+          persist-credentials: false
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

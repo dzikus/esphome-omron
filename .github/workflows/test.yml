@@ -5,14 +5,15 @@ on:
     paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
   pull_request:
     paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
+  workflow_call:
 permissions:
   contents: read
 env:
   ESPHOME_VERSION: "2026.8.1"
   ESPHOME_FLOOR: "2026.5.1"
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   lint:
     name: ruff + pre-commit
