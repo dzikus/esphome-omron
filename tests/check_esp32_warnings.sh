@@ -25,10 +25,10 @@ find "${config_dir}/.esphome/build" -path "*/components/omron/*" -name "*.obj" -
 lines="$(mktemp -t esp32-warnings-lines-XXXXXX.log)"
 tr '\r' '\n' < "${log}" > "${lines}"
 
-sources="$(ls "$(dirname "${BASH_SOURCE[0]}")/../components/omron"/*.cpp | wc -l)"
+sources=("$(dirname "${BASH_SOURCE[0]}")/../components/omron"/*.cpp)
 built="$(grep -oE "Building CXX object [^ ]*components/omron/[a-z_]+\.cpp" "${lines}" | sort -u | wc -l)"
-if [[ "${built}" -ne "${sources}" ]]; then
-  echo "${built} of ${sources} component translation units were compiled;" >&2
+if [[ "${built}" -ne "${#sources[@]}" ]]; then
+  echo "${built} of ${#sources[@]} component translation units were compiled;" >&2
   echo "the verdict would cover only part of the component" >&2
   exit 1
 fi

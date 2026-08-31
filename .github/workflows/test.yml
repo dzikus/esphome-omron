@@ -2,17 +2,19 @@ name: tests
 on:
   push:
     branches: [main]
-    paths: ["components/omron/**", "tests/**", ".github/**", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
+    paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", "example.yaml", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
   pull_request:
-    paths: ["components/omron/**", "tests/**", ".github/**", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
+    paths: ["components/omron/**", "tests/**", ".github/**", ".devcontainer/requirements.txt", "example.yaml", ".intellisense.yaml", "pyproject.toml", ".pre-commit-config.yaml", ".clang-format", ".clang-tidy"]
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 env:
   ESPHOME_VERSION: "2026.8.1"
   ESPHOME_FLOOR: "2026.5.1"
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   lint:
     name: ruff + pre-commit
@@ -33,7 +35,10 @@ jobs:
           key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: ${{ runner.os }}-pre-commit-
       - name: Install pre-commit
-        run: pip install "pre-commit==4.6.0"
+        run: |
+          set -euo pipefail
+          pin="$(grep -E '^pre-commit==' .devcontainer/requirements.txt)"
+          pip install "${pin}"
       - name: Run pre-commit (ruff lint + format + hygiene)
         run: pre-commit run --all-files --show-diff-on-failure
   unit-tests:
@@ -77,7 +82,10 @@ jobs:
             ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-riscv
             ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
       - name: Install ESPHome and clang-tidy
-        run: pip install "esphome==${{ env.ESPHOME_VERSION }}" "clang-tidy==22.1.8"
+        run: |
+          set -euo pipefail
+          pin="$(grep -E '^clang-tidy==' .devcontainer/requirements.txt)"
+          pip install "esphome==${ESPHOME_VERSION}" "${pin}"
       - name: Run clang-tidy
         run: CI_CONFIG=.github/ci-build.yaml bash tests/run_clang_tidy.sh
   esphome-build:
@@ -113,7 +121,7 @@ jobs:
           key: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-${{ matrix.arch }}
           restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
       - name: Install ESPHome
-        run: pip install "esphome==${{ env.ESPHOME_VERSION }}"
+        run: pip install "esphome==${ESPHOME_VERSION}"
       - name: Run codegen unit tests
         run: python -m unittest discover -s tests/python -v
       - name: Compile every board, failing on any warning from the component
@@ -144,10 +152,19 @@ jobs:
           key: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-xtensa
           restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-
       - name: Install ESPHome (component floor)
-        run: pip install "esphome==${{ env.ESPHOME_FLOOR }}"
-      - name: Validate CI and IntelliSense configs
+        run: pip install "esphome==${ESPHOME_FLOOR}"
+      - name: Provide dummy secrets for the example
+        run: |
+          cat > secrets.yaml <<'EOF'
+          wifi_ssid: ci
+          wifi_password: ci-password-123
+          api_key: cJlpAFA6N5wBzUgFSpMSo8QVMXZzKXwUBG6oHtGOb6Q=
+          omron_mac: AA:BB:CC:DD:EE:FF
+          EOF
+      - name: Validate example, CI and IntelliSense configs
         run: |
           set -euo pipefail
+          esphome config example.yaml
           esphome config .github/ci-build.yaml
           esphome config .intellisense.yaml
       # A compile, not a config check. Validation only exercises the Python
