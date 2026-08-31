@@ -37,6 +37,7 @@ wifi:
   password: "esphome-ci-password"
 
 api:
+  homeassistant_services: true
 
 # Present so the USE_TIME branches compile; without a time platform the
 # clock-drift code is preprocessed away and never checked.
