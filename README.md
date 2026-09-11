@@ -1,6 +1,10 @@
 # ESPHome component for Omron Bluetooth blood pressure monitors
 
-![tests](https://github.com/dzikus/esphome-omron/actions/workflows/test.yml/badge.svg?branch=main)
+[![tests](https://github.com/dzikus/esphome-omron/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/dzikus/esphome-omron/actions/workflows/test.yml)
+[![codeql](https://github.com/dzikus/esphome-omron/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/dzikus/esphome-omron/actions/workflows/codeql.yml)
+[![scorecard](https://api.scorecard.dev/projects/github.com/dzikus/esphome-omron/badge)](https://scorecard.dev/viewer/?uri=github.com/dzikus/esphome-omron)
+[![release](https://img.shields.io/github/v/release/dzikus/esphome-omron?sort=semver)](https://github.com/dzikus/esphome-omron/releases/latest)
+[![license](https://img.shields.io/github/license/dzikus/esphome-omron)](LICENSE)
 
 <a href="https://www.buymeacoffee.com/dzikus" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
