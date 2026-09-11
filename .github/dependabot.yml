@@ -1,25 +1,28 @@
 version: 2
+
+multi-ecosystem-groups:
+  deps:
+    schedule:
+      interval: weekly
+
 updates:
-  # Keep the SHA-pinned actions current; without this they never get bumped.
   - package-ecosystem: github-actions
     directory: /
-    schedule:
-      interval: weekly
-  # Same for the hook revs, which are pinned just as hard and just as invisible.
+    patterns: ["*"]
+    multi-ecosystem-group: deps
   - package-ecosystem: pre-commit
     directory: /
-    schedule:
-      interval: weekly
-  # The devcontainer base image and its feature pins, which nothing else reads.
+    patterns: ["*"]
+    multi-ecosystem-group: deps
   - package-ecosystem: docker
     directory: /.devcontainer
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: deps
   - package-ecosystem: pip
     directory: /.devcontainer
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: deps
   - package-ecosystem: devcontainers
     directory: /
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: deps
