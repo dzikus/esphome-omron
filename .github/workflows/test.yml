@@ -36,13 +36,15 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
-          cache: pip
-      - name: Cache pre-commit
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      - name: Restore the pip and pre-commit caches
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          path: ~/.cache/pre-commit
-          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-          restore-keys: ${{ runner.os }}-pre-commit-
+          path: |
+            ~/.cache/pip
+            ~/.cache/pre-commit
+          key: ${{ runner.os }}-py3.14-lint-${{ hashFiles('.devcontainer/requirements.txt', '.pre-commit-config.yaml') }}
+          restore-keys: ${{ runner.os }}-py3.14-lint-
       - name: Install pre-commit
         run: |
           set -euo pipefail
@@ -50,6 +52,14 @@ jobs:
           pip install "${pin}"
       - name: Run pre-commit (ruff lint + format + hygiene)
         run: pre-commit run --all-files --show-diff-on-failure
+      - name: Save the pip and pre-commit caches
+        if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pre-commit
+          key: ${{ steps.cache.outputs.cache-primary-key }}
   unit-tests:
     name: protocol unit tests (native)
     needs: lint
@@ -83,23 +93,39 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
-          cache: pip
       - name: Resolve the ESPHome pin from .devcontainer/requirements.txt
         run: |
           set -euo pipefail
           version="$(sed -n 's/^esphome==//p' .devcontainer/requirements.txt)"
           [ -n "${version}" ] || { echo "no esphome== pin in .devcontainer/requirements.txt" >&2; exit 1; }
           echo "ESPHOME_VERSION=${version}" >> "$GITHUB_ENV"
-      - name: Cache PlatformIO
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      - name: Restore the pip cache
+        id: pip-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-py3.14-clang-tidy-${{ hashFiles('.devcontainer/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-py3.14-clang-tidy-
+      - name: Restore the ESP-IDF framework cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: |
             ~/.platformio
             ~/.cache/esphome
-          key: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-riscv-tidy
-          restore-keys: |
-            ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-riscv
-            ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
+            !~/.cache/esphome/idf/dist
+            !~/.cache/esphome/idf/tools/xtensa-esp-elf
+            !~/.cache/esphome/idf/tools/xtensa-esp-elf-gdb
+            !~/.cache/esphome/idf/tools/esp32ulp-elf
+            !~/.cache/esphome/idf/tools/riscv32-esp-elf
+            !~/.cache/esphome/idf/tools/riscv32-esp-elf-gdb
+          key: ${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}-base
+      - name: Restore the riscv toolchain cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: |
+            ~/.cache/esphome/idf/tools/riscv32-esp-elf
+            ~/.cache/esphome/idf/tools/riscv32-esp-elf-gdb
+          key: ${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}-riscv
       - name: Install ESPHome and clang-tidy
         run: |
           set -euo pipefail
@@ -107,6 +133,12 @@ jobs:
           pip install "esphome==${ESPHOME_VERSION}" "${pin}"
       - name: Run clang-tidy
         run: CI_CONFIG=.github/ci-build.yaml bash tests/run_clang_tidy.sh
+      - name: Save the pip cache
+        if: github.ref == 'refs/heads/main' && steps.pip-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/pip
+          key: ${{ steps.pip-cache.outputs.cache-primary-key }}
   esphome-build:
     name: esphome compile (${{ matrix.arch }})
     needs: unit-tests
@@ -123,8 +155,15 @@ jobs:
         include:
           - arch: xtensa
             boards: esp32dev esp32-s3-devkitc-1
+            toolchains: |
+              ~/.cache/esphome/idf/tools/xtensa-esp-elf
+              ~/.cache/esphome/idf/tools/xtensa-esp-elf-gdb
+              ~/.cache/esphome/idf/tools/esp32ulp-elf
           - arch: riscv
             boards: esp32-c3-devkitm-1 esp32-c6-devkitc-1
+            toolchains: |
+              ~/.cache/esphome/idf/tools/riscv32-esp-elf
+              ~/.cache/esphome/idf/tools/riscv32-esp-elf-gdb
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -132,21 +171,39 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
-          cache: pip
       - name: Resolve the ESPHome pin from .devcontainer/requirements.txt
         run: |
           set -euo pipefail
           version="$(sed -n 's/^esphome==//p' .devcontainer/requirements.txt)"
           [ -n "${version}" ] || { echo "no esphome== pin in .devcontainer/requirements.txt" >&2; exit 1; }
           echo "ESPHOME_VERSION=${version}" >> "$GITHUB_ENV"
-      - name: Cache PlatformIO
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      - name: Restore the pip cache
+        id: pip-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-py3.14-esphome-build-${{ hashFiles('.devcontainer/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-py3.14-esphome-build-
+      - name: Restore the ESP-IDF framework cache
+        id: base-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: |
             ~/.platformio
             ~/.cache/esphome
-          key: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-${{ matrix.arch }}
-          restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_VERSION }}-
+            !~/.cache/esphome/idf/dist
+            !~/.cache/esphome/idf/tools/xtensa-esp-elf
+            !~/.cache/esphome/idf/tools/xtensa-esp-elf-gdb
+            !~/.cache/esphome/idf/tools/esp32ulp-elf
+            !~/.cache/esphome/idf/tools/riscv32-esp-elf
+            !~/.cache/esphome/idf/tools/riscv32-esp-elf-gdb
+          key: ${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}-base
+      - name: Restore the ${{ matrix.arch }} toolchain cache
+        id: toolchain-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ${{ matrix.toolchains }}
+          key: ${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}-${{ matrix.arch }}
       - name: Install ESPHome
         run: pip install "esphome==${ESPHOME_VERSION}"
       - name: Run codegen unit tests
@@ -157,6 +214,32 @@ jobs:
           for board in ${{ matrix.boards }}; do
             bash tests/check_esp32_warnings.sh .github/ci-build.yaml "$board"
           done
+      - name: Save the pip cache
+        if: github.ref == 'refs/heads/main' && matrix.arch == 'xtensa' && steps.pip-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/pip
+          key: ${{ steps.pip-cache.outputs.cache-primary-key }}
+      - name: Save the ESP-IDF framework cache
+        if: github.ref == 'refs/heads/main' && matrix.arch == 'xtensa' && steps.base-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/esphome
+            !~/.cache/esphome/idf/dist
+            !~/.cache/esphome/idf/tools/xtensa-esp-elf
+            !~/.cache/esphome/idf/tools/xtensa-esp-elf-gdb
+            !~/.cache/esphome/idf/tools/esp32ulp-elf
+            !~/.cache/esphome/idf/tools/riscv32-esp-elf
+            !~/.cache/esphome/idf/tools/riscv32-esp-elf-gdb
+          key: ${{ steps.base-cache.outputs.cache-primary-key }}
+      - name: Save the ${{ matrix.arch }} toolchain cache
+        if: github.ref == 'refs/heads/main' && steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ${{ matrix.toolchains }}
+          key: ${{ steps.toolchain-cache.outputs.cache-primary-key }}
   config-build-floor:
     name: config check and build at the ESPHome floor
     needs: lint
@@ -171,15 +254,20 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
-          cache: pip
-      - name: Cache PlatformIO
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      - name: Restore the pip cache
+        id: pip-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-py3.12-esphome-${{ env.ESPHOME_FLOOR }}
+      - name: Restore the ESP-IDF toolchain cache
+        id: idf-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: |
             ~/.platformio
             ~/.cache/esphome
           key: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-xtensa
-          restore-keys: ${{ runner.os }}-idf-${{ env.ESPHOME_FLOOR }}-
       - name: Install ESPHome (component floor)
         run: pip install "esphome==${ESPHOME_FLOOR}"
       - name: Provide dummy secrets for the example
@@ -203,3 +291,17 @@ jobs:
       # verified while being wrong by several releases.
       - name: Compile at the floor
         run: esphome compile .github/ci-build.yaml
+      - name: Save the pip cache
+        if: github.ref == 'refs/heads/main' && steps.pip-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/pip
+          key: ${{ steps.pip-cache.outputs.cache-primary-key }}
+      - name: Save the ESP-IDF toolchain cache
+        if: github.ref == 'refs/heads/main' && steps.idf-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/esphome
+          key: ${{ steps.idf-cache.outputs.cache-primary-key }}
