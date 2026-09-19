@@ -35,7 +35,7 @@ ProfileAdapterError make_poll_layout(const OmronProfile &profile, PollLayout &la
   // trim is what decides how far each one actually reaches.
   if (history_records == HISTORY_RECORDS_ALL) {
     uint16_t deepest = 1;
-    for (uint8_t user = 0; user < profile.user_count && user < profile.users.size(); user++)
+    for (size_t user = 0; user < profile.user_count && user < profile.users.size(); user++)
       deepest = profile.users[user].record_count > deepest ? profile.users[user].record_count : deepest;
     layout.backtrack_records = static_cast<uint16_t>(deepest - 1);
   } else {
