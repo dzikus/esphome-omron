@@ -1,0 +1,50 @@
+name: Cuff report
+description: How a cuff behaves with this component, working or not.
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        One profile has been verified against real hardware. The component's log
+        lines carry the cuff's MAC address in square brackets; replace it before
+        pasting.
+  - type: input
+    id: label
+    attributes:
+      label: Model code on the cuff's label
+      placeholder: HEM-7155T-ESL
+    validations:
+      required: true
+  - type: input
+    id: trade_name
+    attributes:
+      label: Trade name
+      placeholder: X4 Smart
+  - type: input
+    id: profile
+    attributes:
+      label: Profile in the yaml
+      description: What `profile:` was set to, `auto` included.
+      placeholder: hem_7155t_mw3
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: What happened
+      options:
+        - It reads, and the values match the cuff's own display
+        - It reads, but values or dates differ from the display
+        - The session fails
+        - It never connects or never pairs
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log of one session
+      description: >-
+        With `logger: level: DEBUG`, from the line with `Connecting` to the line
+        with `Disconnecting`.
+      render: text
+    validations:
+      required: true
