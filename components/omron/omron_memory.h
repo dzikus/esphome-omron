@@ -20,6 +20,7 @@ struct RingLayout {
   uint16_t record_count{0};
   uint8_t record_size{0};
   uint16_t cursor_mask{0x00FF};
+  uint16_t cursor_full_flag{0};
   int8_t cursor_bias{-1};
   uint16_t slot_min{0};
   uint16_t slot_max{0};

@@ -110,16 +110,16 @@ const char *memory_map_difference(const OmronProfile &a, const OmronProfile &b) 
     return "record sequence offset";
   if (a.user_count != b.user_count)
     return "user count";
-  static constexpr std::array<std::array<const char *, 6>, OMRON_MAX_USERS> USER_FIELDS{{
+  static constexpr std::array<std::array<const char *, 7>, OMRON_MAX_USERS> USER_FIELDS{{
       {"user 1 record address", "user 1 ring depth", "user 1 cursor offset", "user 1 unread counter offset",
-       "user 1 cursor mask", "user 1 slot bias"},
+       "user 1 cursor mask", "user 1 cursor full flag", "user 1 slot bias"},
       {"user 2 record address", "user 2 ring depth", "user 2 cursor offset", "user 2 unread counter offset",
-       "user 2 cursor mask", "user 2 slot bias"},
+       "user 2 cursor mask", "user 2 cursor full flag", "user 2 slot bias"},
   }};
   for (uint8_t user = 0; user < a.user_count && user < OMRON_MAX_USERS; user++) {
     const OmronUserMemoryLayout &left = a.users[user];
     const OmronUserMemoryLayout &right = b.users[user];
-    const std::array<const char *, 6> &names = USER_FIELDS[user];
+    const std::array<const char *, 7> &names = USER_FIELDS[user];
     if (left.record_start_address != right.record_start_address)
       return names[0];
     if (left.record_count != right.record_count)
@@ -130,8 +130,10 @@ const char *memory_map_difference(const OmronProfile &a, const OmronProfile &b) 
       return names[3];
     if (left.write_cursor_mask != right.write_cursor_mask)
       return names[4];
-    if (left.slot_index_bias != right.slot_index_bias)
+    if (left.write_cursor_full_flag != right.write_cursor_full_flag)
       return names[5];
+    if (left.slot_index_bias != right.slot_index_bias)
+      return names[6];
   }
   return nullptr;
 }

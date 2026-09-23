@@ -73,14 +73,14 @@ bool build_record_plan(const PollLayout &layout, std::span<const uint8_t> index_
     plan.unread = static_cast<uint16_t>(raw_unread & UNREAD_COUNT_MASK);
     uint16_t requested = static_cast<uint16_t>(1 + layout.backtrack_records);
 
-    // The cursor also says how many records exist, and asking for more than
-    // that walks into the part of the ring nobody has written. The cuff answers
-    // such a read with a header and no payload, which the transaction can only
-    // read as a length mismatch, killing a session that had already fetched
-    // every real record of both users.
+    const bool ring_full = (raw_cursor & user.ring.cursor_full_flag) != 0;
     const uint32_t masked = raw_cursor & user.ring.cursor_mask;
     const int32_t written = static_cast<int32_t>(masked) + user.ring.cursor_bias + 1;
-    if (written > 0 && written < static_cast<int32_t>(user.ring.record_count) &&
+    if (!ring_full && written <= 0) {
+      plans.push_back(std::move(plan));
+      continue;
+    }
+    if (!ring_full && written < static_cast<int32_t>(user.ring.record_count) &&
         requested > static_cast<uint16_t>(written)) {
       requested = static_cast<uint16_t>(written);
     }

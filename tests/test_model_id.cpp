@@ -271,6 +271,7 @@ void test_model_id_map_comparison_looks_at_every_field() {
       {"user 1 cursor offset", [](OmronProfile &p) { p.users[0].write_cursor_offset ^= 0x02; }},
       {"user 1 unread counter offset", [](OmronProfile &p) { p.users[0].unread_counter_offset ^= 0x02; }},
       {"user 1 cursor mask", [](OmronProfile &p) { p.users[0].write_cursor_mask ^= 0x0080; }},
+      {"user 1 cursor full flag", [](OmronProfile &p) { p.users[0].write_cursor_full_flag ^= 0x4000; }},
       {"user 1 slot bias", [](OmronProfile &p) { p.users[0].slot_index_bias ^= 0x01; }},
       // The second user's block matters as much as the first: a profile that
       // agreed about user 1 and not user 2 would publish one person's readings
@@ -280,6 +281,7 @@ void test_model_id_map_comparison_looks_at_every_field() {
       {"user 2 cursor offset", [](OmronProfile &p) { p.users[1].write_cursor_offset ^= 0x02; }},
       {"user 2 unread counter offset", [](OmronProfile &p) { p.users[1].unread_counter_offset ^= 0x02; }},
       {"user 2 cursor mask", [](OmronProfile &p) { p.users[1].write_cursor_mask ^= 0x0080; }},
+      {"user 2 cursor full flag", [](OmronProfile &p) { p.users[1].write_cursor_full_flag ^= 0x4000; }},
       {"user 2 slot bias", [](OmronProfile &p) { p.users[1].slot_index_bias ^= 0x01; }},
   };
 
