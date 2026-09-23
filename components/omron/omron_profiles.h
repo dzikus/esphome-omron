@@ -184,6 +184,7 @@ struct OmronUserMemoryLayout {
   uint8_t write_cursor_offset;
   uint8_t unread_counter_offset;
   uint16_t write_cursor_mask;
+  uint16_t write_cursor_full_flag;
   int8_t slot_index_bias;
 };
 

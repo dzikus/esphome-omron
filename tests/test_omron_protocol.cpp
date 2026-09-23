@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -716,13 +717,14 @@ static void test_memory_image_and_integers() {
 }
 
 static void test_ring_and_fingerprint() {
-  RingLayout ring{0x1000, 60, 16, 0x00FF, -1, 0, 59};
+  RingLayout ring{0x1000, 60, 16, 0x00FF, 0x4000, -1, 0, 59};
   uint16_t slot = 0;
   assert(normalize_write_cursor(1, ring, slot) && slot == 0);
   assert(normalize_write_cursor(0, ring, slot) && slot == 59);
   assert(normalize_write_cursor(60, ring, slot) && slot == 59);
   assert(normalize_write_cursor(61, ring, slot) && slot == 0);
   assert(normalize_write_cursor(0x8001, ring, slot) && slot == 0);
+  assert(normalize_write_cursor(0x4003, ring, slot) && slot == 2);
 
   RingLayout invalid = ring;
   invalid.record_count = 0;
@@ -735,7 +737,7 @@ static void test_ring_and_fingerprint() {
   invalid.slot_max = 9;
   assert(!normalize_write_cursor(1, invalid, slot));
 
-  RingLayout nonzero_range{0x1000, 3, 4, 0x00FF, -1, 10, 12};
+  RingLayout nonzero_range{0x1000, 3, 4, 0x00FF, 0x4000, -1, 10, 12};
   assert(normalize_write_cursor(11, nonzero_range, slot) && slot == 10);
   assert(normalize_write_cursor(10, nonzero_range, slot) && slot == 12);
 
@@ -743,7 +745,7 @@ static void test_ring_and_fingerprint() {
   assert(record_address(ring, 0, address) && address == 0x1000);
   assert(record_address(ring, 59, address) && address == 0x13B0);
   assert(!record_address(ring, 60, address));
-  RingLayout overflowing{0xFFF8, 2, 8, 0x00FF, 0, 0, 1};
+  RingLayout overflowing{0xFFF8, 2, 8, 0x00FF, 0x4000, 0, 0, 1};
   assert(record_address(overflowing, 0, address) && address == 0xFFF8);
   assert(!record_address(overflowing, 1, address));
 
@@ -752,7 +754,7 @@ static void test_ring_and_fingerprint() {
   assert(newest_first_slots(1, ring, 100).size() == 60);
   assert(newest_first_slots(1, invalid, 3).empty());
 
-  RingLayout wide_mask{0, 300, 1, 0xFFFF, -1, 0, 299};
+  RingLayout wide_mask{0, 300, 1, 0xFFFF, 0x0000, -1, 0, 299};
   assert(normalize_write_cursor(0x0101, wide_mask, slot) && slot == 256);
 
   const std::array<uint8_t, 4> record{1, 2, 3, 4};
@@ -1289,6 +1291,9 @@ static void test_profiles_and_aliases() {
       assert(address == layout.record_start_address);
       assert(record_address(ring, static_cast<uint16_t>(layout.record_count - 1), address));
       assert(!record_address(ring, layout.record_count, address));
+      assert(std::has_single_bit(layout.write_cursor_full_flag));
+      assert((layout.write_cursor_full_flag & layout.write_cursor_mask) == 0);
+      assert(ring.cursor_full_flag == layout.write_cursor_full_flag);
     }
 
     for (size_t alias = 0; alias < profile->equivalent_model_id_count; alias++) {
@@ -2213,6 +2218,7 @@ static void test_profile_adapter_and_poll_plan() {
   assert(layout.users[1].ring.records_address == 0x06A8);
   assert(layout.users[0].ring.record_count == 60 && layout.users[0].ring.record_size == 16);
   assert(layout.users[0].ring.cursor_mask == 0x00FF && layout.users[0].ring.cursor_bias == -1);
+  assert(layout.users[0].ring.cursor_full_flag == 0x4000 && layout.users[1].ring.cursor_full_flag == 0x4000);
   assert(layout.users[0].ring.slot_min == 0 && layout.users[0].ring.slot_max == 59);
   assert(!layout.users[2].enabled && !layout.users[3].enabled);
 
@@ -2338,16 +2344,19 @@ static void test_profile_adapter_and_poll_plan() {
   for (const ReadBlock &block : plans[0].reads)
     assert(block.address + block.length <= 0x02E8 + 9 * 16);
 
-  // A ring that has wrapped keeps the full depth: the cursor no longer counts
-  // records, every slot holds one, and the request is capped by the ring size.
   PollLayout wrapped_plan = layout;
   wrapped_plan.backtrack_records = 15;
   std::vector<uint8_t> wrapped(wrapped_plan.index_size, 0);
-  write_u16_le(wrapped, wrapped_plan.users[0].cursor_offset, 60);
-  write_u16_le(wrapped, wrapped_plan.users[1].cursor_offset, 60);
+  write_u16_le(wrapped, wrapped_plan.users[0].cursor_offset, 0x4003);
+  write_u16_le(wrapped, wrapped_plan.users[1].cursor_offset, 0x4000);
   assert(build_record_plan(wrapped_plan, wrapped, plans));
   assert(plans[0].slots.size() == 16);
-  assert(plans[0].slots.front() == 59 && plans[0].slots.back() == 44);
+  assert(plans[0].slots.front() == 2 && plans[0].slots.back() == 47);
+  assert(plans[1].slots.size() == 16);
+  assert(plans[1].slots.front() == 59 && plans[1].slots.back() == 44);
+  write_u16_le(wrapped, wrapped_plan.users[0].cursor_offset, 0x8003);
+  assert(build_record_plan(wrapped_plan, wrapped, plans));
+  assert((plans[0].slots == std::vector<uint16_t>{2, 1, 0}));
 
   assert(!build_record_plan(layout, {}, plans));
   assert(!build_record_plan(layout, std::span<const uint8_t>(index_data).first(index_data.size() - 1), plans));

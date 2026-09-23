@@ -68,6 +68,7 @@ ProfileAdapterError make_poll_layout(const OmronProfile &profile, PollLayout &la
     target.ring.record_count = source.record_count;
     target.ring.record_size = profile.record_size;
     target.ring.cursor_mask = source.write_cursor_mask;
+    target.ring.cursor_full_flag = source.write_cursor_full_flag;
     target.ring.cursor_bias = source.slot_index_bias;
     target.ring.slot_min = 0;
     target.ring.slot_max = static_cast<uint16_t>(source.record_count - 1);
