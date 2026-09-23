@@ -95,6 +95,20 @@ HarvestResult harvest_records(const HarvestRequest &request) {
       user.newest = kept.records.front();
     }
 
+    const HarvestedRecord *latest = nullptr;
+    for (const HarvestedRecord &record : kept.records) {
+      if (!record.measurement.has_record_id)
+        continue;
+      if (latest == nullptr ||
+          static_cast<int16_t>(static_cast<uint16_t>(record.measurement.record_id - latest->measurement.record_id)) > 0)
+        latest = &record;
+    }
+    if (latest != nullptr && user.newest.measurement.has_record_id && latest->slot != user.newest.slot) {
+      user.newest_outnumbered = true;
+      user.outnumbering_slot = latest->slot;
+      user.outnumbering_record = latest->measurement.record_id;
+    }
+
     if (request.history_records == 0 || kept.records.empty())
       continue;
 

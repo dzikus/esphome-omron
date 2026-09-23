@@ -1242,6 +1242,22 @@ void test_harvest_prefers_the_cursor_over_the_clock() {
   assert(user2.valid && user2.newest.slot == 13);
   assert(user2.newest.measurement.systolic_mm_hg == 115);
   assert(user2.newest.measurement.timestamp.day == 4);
+  assert(user2.newest_outnumbered);
+  assert(user2.outnumbering_slot == 12 && user2.outnumbering_record == 15);
+  assert(user2.newest.measurement.record_id == 13);
+
+  std::vector<uint8_t> before_wrap = older_stamp;
+  std::vector<uint8_t> after_wrap = older_stamp;
+  before_wrap[10] = 0xFF;
+  before_wrap[11] = 0xFF;
+  after_wrap[10] = 0x01;
+  after_wrap[11] = 0x00;
+  OmronMemoryImage wrapped;
+  wrapped.add_block(0x0768, after_wrap);
+  wrapped.add_block(static_cast<uint16_t>(0x0768 + 16), before_wrap);
+  const HarvestResult across = harvest_records(harvest_request_for(mw3, layout, wrapped, plans));
+  assert(across[1].newest.slot == 13 && across[1].newest_outnumbered);
+  assert(across[1].outnumbering_slot == 12 && across[1].outnumbering_record == 1);
 }
 
 void test_harvest_cutoff_watermark_and_budget() {
@@ -1277,6 +1293,7 @@ void test_harvest_cutoff_watermark_and_budget() {
     // The entity still gets the newest record. A watermark says what has already
     // been reported as history, not what the entities may show.
     assert(harvest[1].valid && harvest[1].newest.slot == 14);
+    assert(!harvest[1].newest_outnumbered);
   }
 
   // A node whose own clock is far behind refuses to move the watermark past

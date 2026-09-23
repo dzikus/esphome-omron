@@ -1634,6 +1634,14 @@ void OmronBLEClient::finalize_record_transaction_() {
       ESP_LOGW(TAG, "[%s] User %u: %u planned slot(s) never came back from the cuff", this->address_str(),
                static_cast<unsigned>(user_index + 1), static_cast<unsigned>(user.unreadable));
     }
+    if (user.newest_outnumbered) {
+      ESP_LOGW(TAG,
+               "[%s] User %u: the cursor names slot %u (record %u) as the newest, but slot %u holds record %u; this "
+               "profile may be reading the cursor wrong",
+               this->address_str(), static_cast<unsigned>(user_index + 1), static_cast<unsigned>(user.newest.slot),
+               static_cast<unsigned>(user.newest.measurement.record_id), static_cast<unsigned>(user.outnumbering_slot),
+               static_cast<unsigned>(user.outnumbering_record));
+    }
     if (user.history_truncated) {
       ESP_LOGW(TAG, "[%s] History queue is full at %u; dropped the rest of user %u's ring", this->address_str(),
                static_cast<unsigned>(OmronHistoryQueue::CAPACITY), static_cast<unsigned>(user_index + 1));
