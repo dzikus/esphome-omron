@@ -10,6 +10,8 @@ namespace esphome::omron {
 // so this always covers at least seven of them.
 static constexpr uint16_t MAX_MERGED_READ = 240;
 
+static constexpr uint32_t UNREAD_COUNT_MASK = 0x7FFF;
+
 bool build_index_read(const PollLayout &layout, ReadRange &range) {
   if (layout.index_size == 0 || layout.transfer_block_size == 0)
     return false;
@@ -55,16 +57,20 @@ bool build_record_plan(const PollLayout &layout, std::span<const uint8_t> index_
     if (!user.enabled)
       continue;
     if (user.cursor_offset >= layout.index_size ||
-        static_cast<size_t>(user.cursor_offset) + user.cursor_width > layout.index_size)
+        static_cast<size_t>(user.cursor_offset) + user.cursor_width > layout.index_size ||
+        static_cast<size_t>(user.unread_offset) + 2 > layout.index_size)
       return false;
 
     uint32_t raw_cursor = 0;
-    if (!read_integer(index_data.subspan(user.cursor_offset), user.cursor_width, user.cursor_order, raw_cursor))
+    uint32_t raw_unread = 0;
+    if (!read_integer(index_data.subspan(user.cursor_offset), user.cursor_width, user.cursor_order, raw_cursor) ||
+        !read_integer(index_data.subspan(user.unread_offset), 2, user.cursor_order, raw_unread))
       return false;
 
     UserRecordPlan plan;
     plan.user = static_cast<uint8_t>(user_index);
     plan.raw_cursor = raw_cursor;
+    plan.unread = static_cast<uint16_t>(raw_unread & UNREAD_COUNT_MASK);
     uint16_t requested = static_cast<uint16_t>(1 + layout.backtrack_records);
 
     // The cursor also says how many records exist, and asking for more than

@@ -16,6 +16,7 @@ struct UserPollLayout {
   uint8_t cursor_offset{0};
   uint8_t cursor_width{2};
   MemoryByteOrder cursor_order{MemoryByteOrder::LITTLE};
+  uint8_t unread_offset{0};
   RingLayout ring{};
 };
 
@@ -36,6 +37,7 @@ struct PollLayout {
 struct UserRecordPlan {
   uint8_t user{0};
   uint32_t raw_cursor{0};
+  uint16_t unread{0};
   std::vector<uint16_t> slots{};
   std::vector<ReadBlock> reads{};
 };

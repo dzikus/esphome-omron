@@ -613,12 +613,20 @@ bool OmronSession::build_record_reads_() {
   }
 
   // Drop the users whose ring has not moved since the last session that
-  // finished. Their entities keep the values they already hold, which is what
-  // those values were: the newest record in a ring that has not changed.
+  // finished and who have nothing the cuff counts as unread. Their entities
+  // keep the values they already hold, which is what those values were: the
+  // newest record in a ring that has not changed.
   const bool read_everything = this->config_.full_read_on_pairing && this->pairing_advertised_;
   const size_t skipped = std::erase_if(this->record_plans_, [this, read_everything](const UserRecordPlan &plan) {
-    return !read_everything && plan.user < USER_SLOTS && this->has_polled_cursor_[plan.user] &&
-           this->polled_cursor_[plan.user] == plan.raw_cursor;
+    if (read_everything || plan.user >= USER_SLOTS || !this->has_polled_cursor_[plan.user] ||
+        this->polled_cursor_[plan.user] != plan.raw_cursor)
+      return false;
+    if (plan.unread == 0)
+      return true;
+    OMRON_LOG_D(TAG, "[%s] User %u cursor has not moved, but the cuff counts %u unread; reading the ring",
+                this->host_->session_address(), static_cast<unsigned>(plan.user + 1),
+                static_cast<unsigned>(plan.unread));
+    return false;
   });
   if (skipped != 0) {
     OMRON_LOG_D(TAG, "[%s] %u user ring(s) unchanged since the last session; not re-reading them",

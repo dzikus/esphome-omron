@@ -507,6 +507,58 @@ void test_session_with_unmoved_cursors_reads_only_two_frames() {
   assert(cuff.read_frames() == 2);  // the previous *successful* session still stands
 }
 
+void test_session_skips_a_ring_only_when_the_cuff_counts_nothing_unread() {
+  const OmronProfile &mw3 = get_profile(OmronProfileId::HEM_7155T_MW3);
+  FakeCuff cuff;
+  load_captured_cuff(cuff, mw3);
+  cuff.has_wall_clock = true;
+  cuff.wall_clock = OmronDateTime{2026, 9, 23, 12, 0, 0};
+  OmronSessionConfig config = captured_session_config(mw3, HISTORY_RECORDS_ALL);
+  config.register_as_user = 2;
+  OmronSession session;
+  session.set_host(&cuff);
+  session.configure(config);
+
+  const auto ring_frames = [&cuff, &mw3](uint8_t user) {
+    const uint16_t start = mw3.users[user].record_start_address;
+    const uint32_t end = start + static_cast<uint32_t>(mw3.users[user].record_count) * mw3.record_size;
+    size_t count = 0;
+    for (const auto &frame : cuff.sent) {
+      const uint16_t address = static_cast<uint16_t>((frame[3] << 8) | frame[4]);
+      if (frame.size() >= 8 && frame[1] == 0x01 && frame[2] == 0x00 && address >= start && address < end)
+        count++;
+    }
+    return count;
+  };
+  const auto run = [&cuff, &session]() {
+    cuff.sent.clear();
+    session.reset();
+    session.begin(true);
+    cuff.pump(session);
+    assert(cuff.failure == nullptr);
+    session.finish(true);
+  };
+
+  run();
+  assert(ring_frames(0) > 0 && ring_frames(1) > 0);
+  run();
+  assert(cuff.read_frames() == 2);
+
+  const uint16_t base = mw3.settings_read_address;
+  cuff.poke(static_cast<uint16_t>(base + mw3.users[0].unread_counter_offset), {0x01, 0x00});
+  run();
+  assert(ring_frames(0) > 0 && ring_frames(1) == 0);
+  run();
+  assert(cuff.read_frames() == 2);
+
+  cuff.poke(static_cast<uint16_t>(base + mw3.users[1].write_cursor_offset), {0x0E, 0x80});
+  cuff.poke(static_cast<uint16_t>(base + mw3.users[1].unread_counter_offset), {0x01, 0x00});
+  run();
+  assert(ring_frames(0) == 0 && ring_frames(1) > 0);
+  run();
+  assert(cuff.read_frames() == 2);
+}
+
 void test_session_reads_past_memory_nobody_wrote() {
   const OmronProfile &mw3 = get_profile(OmronProfileId::HEM_7155T_MW3);
   OmronSessionConfig config = captured_session_config(mw3, HISTORY_RECORDS_ALL);

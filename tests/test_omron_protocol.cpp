@@ -2320,6 +2320,19 @@ static void test_profile_adapter_and_poll_plan() {
   assert(plans[0].slots.front() == 8 && plans[0].slots.back() == 0);
   assert(plans[1].slots.size() == 13);
   assert(plans[1].slots.front() == 12 && plans[1].slots.back() == 0);
+  assert(plans[0].unread == 9 && plans[1].unread == 1);
+  PollLayout swapped = history_plan;
+  for (auto &user : swapped.users)
+    user.cursor_order = MemoryByteOrder::BIG;
+  std::vector<uint8_t> swapped_index(swapped.index_size, 0x00);
+  swapped_index[1] = 0x09;
+  swapped_index[3] = 0x0D;
+  swapped_index[4] = 0x80;
+  swapped_index[7] = 0x03;
+  assert(build_record_plan(swapped, swapped_index, plans));
+  assert(plans[0].raw_cursor == 9 && plans[1].raw_cursor == 13);
+  assert(plans[0].unread == 0 && plans[1].unread == 3);
+  assert(build_record_plan(history_plan, captured_index, plans));
   // Reads stay inside the written region: user 1 ends at slot 8, whose address
   // is well below the 0x0638 that the cuff refused to serve.
   for (const ReadBlock &block : plans[0].reads)
@@ -2341,6 +2354,9 @@ static void test_profile_adapter_and_poll_plan() {
   PollLayout invalid_cursor = layout;
   invalid_cursor.users[1].cursor_offset = static_cast<uint8_t>(invalid_cursor.index_size - 1);
   assert(!build_record_plan(invalid_cursor, index_data, plans));
+  PollLayout invalid_unread = layout;
+  invalid_unread.users[1].unread_offset = static_cast<uint8_t>(invalid_unread.index_size - 1);
+  assert(!build_record_plan(invalid_unread, index_data, plans));
   PollLayout no_users{};
   no_users.index_size = 1;
   no_users.transfer_block_size = 1;
@@ -2778,6 +2794,7 @@ int main() {
   groups += run_group(test_command_writer_edge_cases);
   groups += run_group(test_session_ignores_a_stray_frame_without_resending);
   groups += run_group(test_session_with_unmoved_cursors_reads_only_two_frames);
+  groups += run_group(test_session_skips_a_ring_only_when_the_cuff_counts_nothing_unread);
   groups += run_group(test_session_reads_past_memory_nobody_wrote);
   groups += run_group(test_session_full_read_on_pairing_needs_both_the_option_and_the_flag);
   groups += run_group(test_session_registration_writes_reach_the_wire);
