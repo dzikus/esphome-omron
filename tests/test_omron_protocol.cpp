@@ -1118,7 +1118,7 @@ static void test_standard_bp_and_sfloat() {
 }
 
 static void test_profiles_and_aliases() {
-  static constexpr std::array<OmronProfileId, 38> EXPECTED_IDS{{
+  static constexpr std::array<OmronProfileId, 37> EXPECTED_IDS{{
       OmronProfileId::HEM_6161T,
       OmronProfileId::HEM_6232T,
       OmronProfileId::HEM_7142T2,
@@ -1151,7 +1151,6 @@ static void test_profiles_and_aliases() {
       OmronProfileId::HEM_7150T,
       OmronProfileId::HEM_7157T_DEEP,
       OmronProfileId::HEM_7188T1,
-      OmronProfileId::HEM_7361T,
       OmronProfileId::HEM_7380T1,
       OmronProfileId::HEM_7382T1,
       OmronProfileId::HEM_7386T1,
@@ -1190,7 +1189,9 @@ static void test_profiles_and_aliases() {
     assert(profile->token_required);
   }
   assert(get_profile(OmronProfileId::HEM_7155T_MW3).confidence == OmronProfileConfidence::HARDWARE_VERIFIED);
-  assert(get_profile(OmronProfileId::HEM_7361T).confidence == OmronProfileConfidence::REFERENCE_ONLY);
+  assert(get_profile(OmronProfileId::HEM_7342T).confidence == OmronProfileConfidence::REFERENCE_ONLY);
+  for (const char *model : {"HEM-7361T", "HEM-7361T-AP", "HEM-7361T-D", "HEM-7361T-EBK", "HEM-7361T_ESL"})
+    assert(profile_for_model(model)->id == OmronProfileId::HEM_7342T);
   assert(get_profile(OmronProfileId::HEM_7155T).confidence == OmronProfileConfidence::REFERENCE_TESTED);
   expect_string(profile_confidence_to_string(OmronProfileConfidence::REFERENCE_ONLY),
                 "transcribed from a catalog, unverified");

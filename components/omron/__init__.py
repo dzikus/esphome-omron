@@ -107,7 +107,6 @@ OMRON_PROFILES = {
     "hem_7136t": OmronProfileId.HEM_7136T,
     "hem_7150t": OmronProfileId.HEM_7150T,
     "hem_7188t1": OmronProfileId.HEM_7188T1,
-    "hem_7361t": OmronProfileId.HEM_7361T,
     "hem_7380t1": OmronProfileId.HEM_7380T1,
     "hem_7382t1": OmronProfileId.HEM_7382T1,
     "hem_7386t1": OmronProfileId.HEM_7386T1,
@@ -136,6 +135,10 @@ OMRON_PROFILES = {
     "hem_9700t": OmronProfileId.HEM_9700T,
 }
 
+RETIRED_PROFILES = {
+    "hem_7361t": "hem_7342t",
+}
+
 CUSTOM_KEY_PROFILES = {
     "hem_6161t",
     "hem_6232t",
@@ -151,7 +154,6 @@ CUSTOM_KEY_PROFILES = {
     "hem_6321t",
     "hem_7136t",
     "hem_7150t",
-    "hem_7361t",
     # Classic transport like the HEM-7322T it was split from, so it needs the
     # same already-provisioned key.
     "hem_7511t",
@@ -218,12 +220,18 @@ def _profile_or_auto(value):
 
     Spelled out rather than cv.Any(one_of, enum) because cv.Any reports the first
     alternative's failure: a typo in a profile name came back as "valid options
-    are 'auto'", which hides all thirty-eight of them behind the one option that
+    are 'auto'", which hides all thirty-seven of them behind the one option that
     is not a profile at all. Delegating to cv.enum keeps its own error, which
     lists them.
     """
     if isinstance(value, str) and value.lower() == PROFILE_AUTO:
         return PROFILE_AUTO
+    if isinstance(value, str) and value.lower() in RETIRED_PROFILES:
+        replacement = RETIRED_PROFILES[value.lower()]
+        raise cv.Invalid(
+            f"profile {value} is now {replacement}: both name the same memory map. "
+            f"Use `profile: {replacement}`."
+        )
     return cv.enum(OMRON_PROFILES, lower=True)(value)
 
 
