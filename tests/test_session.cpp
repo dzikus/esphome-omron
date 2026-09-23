@@ -108,6 +108,7 @@ class FakeCuff : public OmronSessionHost {
   bool acknowledge_protocol_writes{false};
   int pending_acks{0};
   int overlapping_writes{0};
+  std::vector<uint16_t> unwritten{};
 
   void poke(uint16_t address, const std::vector<uint8_t> &bytes) {
     for (size_t index = 0; index < bytes.size(); index++)
@@ -275,6 +276,11 @@ class FakeCuff : public OmronSessionHost {
       case PacketType::START_REQUEST:
         return make_response(PacketType::START_RESPONSE);
       case PacketType::READ_REQUEST:
+        if (std::ranges::find(this->unwritten, address) != this->unwritten.end()) {
+          std::vector<uint8_t> bare{0x08, 0x81, 0x00, frame[3], frame[4], count, READ_RESULT_UNWRITTEN, 0x00};
+          bare.back() = xor_bytes(std::span<const uint8_t>(bare).first(bare.size() - 1));
+          return bare;
+        }
         return make_response(PacketType::READ_RESPONSE, address, this->peek(address, count));
       case PacketType::WRITE_REQUEST: {
         const std::span<const uint8_t> body = frame.subspan(6, count);
@@ -499,6 +505,104 @@ void test_session_with_unmoved_cursors_reads_only_two_frames() {
   session.begin(true);
   cuff.pump(session);
   assert(cuff.read_frames() == 2);  // the previous *successful* session still stands
+}
+
+void test_session_skips_a_ring_only_when_the_cuff_counts_nothing_unread() {
+  const OmronProfile &mw3 = get_profile(OmronProfileId::HEM_7155T_MW3);
+  FakeCuff cuff;
+  load_captured_cuff(cuff, mw3);
+  cuff.has_wall_clock = true;
+  cuff.wall_clock = OmronDateTime{2026, 9, 23, 12, 0, 0};
+  OmronSessionConfig config = captured_session_config(mw3, HISTORY_RECORDS_ALL);
+  config.register_as_user = 2;
+  OmronSession session;
+  session.set_host(&cuff);
+  session.configure(config);
+
+  const auto ring_frames = [&cuff, &mw3](uint8_t user) {
+    const uint16_t start = mw3.users[user].record_start_address;
+    const uint32_t end = start + static_cast<uint32_t>(mw3.users[user].record_count) * mw3.record_size;
+    size_t count = 0;
+    for (const auto &frame : cuff.sent) {
+      const uint16_t address = static_cast<uint16_t>((frame[3] << 8) | frame[4]);
+      if (frame.size() >= 8 && frame[1] == 0x01 && frame[2] == 0x00 && address >= start && address < end)
+        count++;
+    }
+    return count;
+  };
+  const auto run = [&cuff, &session]() {
+    cuff.sent.clear();
+    session.reset();
+    session.begin(true);
+    cuff.pump(session);
+    assert(cuff.failure == nullptr);
+    session.finish(true);
+  };
+
+  run();
+  assert(ring_frames(0) > 0 && ring_frames(1) > 0);
+  run();
+  assert(cuff.read_frames() == 2);
+
+  const uint16_t base = mw3.settings_read_address;
+  cuff.poke(static_cast<uint16_t>(base + mw3.users[0].unread_counter_offset), {0x01, 0x00});
+  run();
+  assert(ring_frames(0) > 0 && ring_frames(1) == 0);
+  run();
+  assert(cuff.read_frames() == 2);
+
+  cuff.poke(static_cast<uint16_t>(base + mw3.users[1].write_cursor_offset), {0x0E, 0x80});
+  cuff.poke(static_cast<uint16_t>(base + mw3.users[1].unread_counter_offset), {0x01, 0x00});
+  run();
+  assert(ring_frames(0) == 0 && ring_frames(1) > 0);
+  run();
+  assert(cuff.read_frames() == 2);
+}
+
+void test_session_reads_past_memory_nobody_wrote() {
+  const OmronProfile &mw3 = get_profile(OmronProfileId::HEM_7155T_MW3);
+  OmronSessionConfig config = captured_session_config(mw3, HISTORY_RECORDS_ALL);
+  config.register_as_user = 2;
+
+  {
+    FakeCuff cuff;
+    load_captured_cuff(cuff, mw3);
+    cuff.has_wall_clock = true;
+    cuff.wall_clock = OmronDateTime{2026, 9, 23, 12, 0, 0};
+    cuff.unwritten = {0x0320};
+    OmronSession session;
+    session.set_host(&cuff);
+    session.configure(config);
+    session.begin(true);
+    cuff.pump(session);
+
+    assert(cuff.failure == nullptr);
+    assert(cuff.transfer_complete);
+    const std::vector<uint8_t> hole = session.record_memory().read(0x0320, 0x38);
+    assert(hole.size() == 0x38 && std::ranges::all_of(hole, [](uint8_t value) { return value == 0xFF; }));
+    assert(session.record_memory().read(0x02E8, 0x10) != std::vector<uint8_t>(0x10, 0xFF));
+    assert(cuff.writes.size() == 2);
+    assert(cuff.writes[0].first == 0x02A4);
+    assert(cuff.writes[0].second[0] == CAPTURED_SETTINGS[0] && cuff.writes[0].second[2] == CAPTURED_SETTINGS[2]);
+  }
+
+  for (const uint16_t refused :
+       {mw3.settings_read_address, static_cast<uint16_t>(mw3.settings_read_address + mw3.time_region_start)}) {
+    FakeCuff cuff;
+    load_captured_cuff(cuff, mw3);
+    cuff.has_wall_clock = true;
+    cuff.wall_clock = OmronDateTime{2026, 9, 23, 12, 0, 0};
+    cuff.unwritten = {refused};
+    OmronSession session;
+    session.set_host(&cuff);
+    session.configure(config);
+    session.begin(true);
+    cuff.pump(session);
+
+    assert(cuff.failure != nullptr);
+    expect_string(cuff.failure, protocol_error_to_string(ProtocolError::NOTHING_WRITTEN));
+    assert(cuff.writes.empty());
+  }
 }
 
 void test_session_full_read_on_pairing_needs_both_the_option_and_the_flag() {
@@ -1138,6 +1242,22 @@ void test_harvest_prefers_the_cursor_over_the_clock() {
   assert(user2.valid && user2.newest.slot == 13);
   assert(user2.newest.measurement.systolic_mm_hg == 115);
   assert(user2.newest.measurement.timestamp.day == 4);
+  assert(user2.newest_outnumbered);
+  assert(user2.outnumbering_slot == 12 && user2.outnumbering_record == 15);
+  assert(user2.newest.measurement.record_id == 13);
+
+  std::vector<uint8_t> before_wrap = older_stamp;
+  std::vector<uint8_t> after_wrap = older_stamp;
+  before_wrap[10] = 0xFF;
+  before_wrap[11] = 0xFF;
+  after_wrap[10] = 0x01;
+  after_wrap[11] = 0x00;
+  OmronMemoryImage wrapped;
+  wrapped.add_block(0x0768, after_wrap);
+  wrapped.add_block(static_cast<uint16_t>(0x0768 + 16), before_wrap);
+  const HarvestResult across = harvest_records(harvest_request_for(mw3, layout, wrapped, plans));
+  assert(across[1].newest.slot == 13 && across[1].newest_outnumbered);
+  assert(across[1].outnumbering_slot == 12 && across[1].outnumbering_record == 1);
 }
 
 void test_harvest_cutoff_watermark_and_budget() {
@@ -1173,6 +1293,7 @@ void test_harvest_cutoff_watermark_and_budget() {
     // The entity still gets the newest record. A watermark says what has already
     // been reported as history, not what the entities may show.
     assert(harvest[1].valid && harvest[1].newest.slot == 14);
+    assert(!harvest[1].newest_outnumbered);
   }
 
   // A node whose own clock is far behind refuses to move the watermark past

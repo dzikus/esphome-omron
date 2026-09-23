@@ -13,7 +13,7 @@ no Omron cloud account and no phone involved. The cuff keeps its readings in an
 internal memory; this component opens a session, copies what is there, and
 publishes it.
 
-**248 model names across 38 profiles.** One profile has been verified against
+**248 model names across 37 profiles.** One profile has been verified against
 real hardware. Read [Confidence levels](#confidence-levels) before trusting a
 reading from any of the others.
 

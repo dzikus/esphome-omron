@@ -66,6 +66,8 @@ enum class ProfileVerdict : uint8_t {
 // identically, and none of them can turn a reading into a wrong number.
 bool same_record_memory_map(const OmronProfile &a, const OmronProfile &b);
 
+const char *memory_map_difference(const OmronProfile &a, const OmronProfile &b);
+
 // `reported` is the DIS 0x2A24 string as it came off the wire, trailing padding
 // and all. `stack` may be UNKNOWN, which only costs the six trade names that
 // need it.

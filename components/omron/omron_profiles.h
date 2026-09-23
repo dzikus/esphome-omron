@@ -121,7 +121,6 @@ enum class OmronProfileId : uint8_t {
   HEM_7136T,
   HEM_7150T,
   HEM_7188T1,
-  HEM_7361T,
   HEM_7380T1,
   HEM_7382T1,
   HEM_7386T1,

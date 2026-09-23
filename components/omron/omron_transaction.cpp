@@ -30,7 +30,7 @@ bool OmronTransaction::add_read_range(uint16_t address, uint16_t length, uint8_t
   return true;
 }
 
-bool OmronTransaction::extend_reads(uint16_t address, uint16_t length, uint8_t block_size) {
+bool OmronTransaction::extend_reads(uint16_t address, uint16_t length, uint8_t block_size, ReadPurpose purpose) {
   // Callers append one range at a time, so only the first call resumes reading;
   // the rest just grow the plan behind the current read index.
   const bool resuming = this->state_ == TransactionState::END_PENDING;
@@ -41,7 +41,7 @@ bool OmronTransaction::extend_reads(uint16_t address, uint16_t length, uint8_t b
     return false;
 
   const size_t resume_index = this->plan_.size();
-  this->append_blocks_(address, length, block_size);
+  this->append_blocks_(address, length, block_size, purpose);
   if (resuming) {
     this->read_index_ = resume_index;
     this->attempt_ = 0;
@@ -111,12 +111,12 @@ void OmronTransaction::clear_read_ranges() {
     this->ranges_.clear();
 }
 
-void OmronTransaction::append_blocks_(uint16_t address, uint16_t length, uint8_t block_size) {
+void OmronTransaction::append_blocks_(uint16_t address, uint16_t length, uint8_t block_size, ReadPurpose purpose) {
   uint16_t remaining = length;
   uint16_t cursor = address;
   while (remaining != 0) {
     const uint8_t chunk = remaining < block_size ? static_cast<uint8_t>(remaining) : block_size;
-    this->plan_.push_back({cursor, chunk});
+    this->plan_.push_back({cursor, chunk, purpose});
     cursor = static_cast<uint16_t>(cursor + chunk);
     remaining = static_cast<uint16_t>(remaining - chunk);
   }
@@ -125,7 +125,7 @@ void OmronTransaction::append_blocks_(uint16_t address, uint16_t length, uint8_t
 bool OmronTransaction::build_plan_() {
   this->plan_.clear();
   for (const auto &range : this->ranges_)
-    this->append_blocks_(range.address, range.length, range.block_size);
+    this->append_blocks_(range.address, range.length, range.block_size, ReadPurpose::SETTINGS);
   return !this->plan_.empty();
 }
 
@@ -144,6 +144,7 @@ bool OmronTransaction::begin(TransactionUnlock unlock, const OmronBindKey &bind_
   this->attempt_ = 0;
   this->stray_frames_ = 0;
   this->end_status_ = 0;
+  this->unwritten_blocks_ = 0;
   this->error_ = ProtocolError::NONE;
   if (unlock == TransactionUnlock::CUSTOM_KEY) {
     this->state_ = TransactionState::KEY_PENDING;
@@ -273,6 +274,15 @@ ProtocolError OmronTransaction::accept_frame(std::span<const uint8_t> frame) {
         this->fail(ProtocolError::UNEXPECTED_COMMAND);
         return this->error_;
       }
+      if (response.status == READ_RESULT_UNWRITTEN) {
+        // Filled settings or clock bytes would go out again in this session's writes.
+        if (expected.purpose != ReadPurpose::RECORDS) {
+          this->fail(ProtocolError::NOTHING_WRITTEN);
+          return this->error_;
+        }
+        response.data.assign(expected.length, 0xFF);
+        this->unwritten_blocks_++;
+      }
       if (response.data.size() != expected.length) {
         this->fail(ProtocolError::PAYLOAD_LENGTH_MISMATCH);
         return this->error_;
@@ -374,6 +384,7 @@ void OmronTransaction::reset() {
   this->attempt_ = 0;
   this->stray_frames_ = 0;
   this->end_status_ = 0;
+  this->unwritten_blocks_ = 0;
   this->state_ = TransactionState::IDLE;
   this->error_ = ProtocolError::NONE;
 }

@@ -487,6 +487,10 @@ void OmronSession::complete_reply_(ProtocolError error, const char *stray_what) 
       this->diagnostics_->protocol_failures++;
       this->diagnostics_->last_protocol_error = error;
     }
+    if (error == ProtocolError::NOTHING_WRITTEN) {
+      OMRON_LOG_W(TAG, "[%s] Nothing written at 0x%04X, which this profile reads as settings; check the profile",
+                  this->host_->session_address(), static_cast<unsigned>(this->active_command_.address));
+    }
     this->wire_ = CommandWireState::IDLE;
     this->fail_(protocol_error_to_string(error), 0);
     return;
@@ -569,6 +573,10 @@ void OmronSession::handle_transaction_complete_() {
   this->record_memory_.clear();
   for (const auto &block : this->transaction_.received_blocks())
     this->record_memory_.add_block(block.address, block.data);
+  if (this->transaction_.unwritten_blocks() != 0) {
+    OMRON_LOG_I(TAG, "[%s] %u record block(s) came back as never written; read as empty slots",
+                this->host_->session_address(), static_cast<unsigned>(this->transaction_.unwritten_blocks()));
+  }
   this->host_->session_transfer_complete();
 }
 
@@ -605,12 +613,20 @@ bool OmronSession::build_record_reads_() {
   }
 
   // Drop the users whose ring has not moved since the last session that
-  // finished. Their entities keep the values they already hold, which is what
-  // those values were: the newest record in a ring that has not changed.
+  // finished and who have nothing the cuff counts as unread. Their entities
+  // keep the values they already hold, which is what those values were: the
+  // newest record in a ring that has not changed.
   const bool read_everything = this->config_.full_read_on_pairing && this->pairing_advertised_;
   const size_t skipped = std::erase_if(this->record_plans_, [this, read_everything](const UserRecordPlan &plan) {
-    return !read_everything && plan.user < USER_SLOTS && this->has_polled_cursor_[plan.user] &&
-           this->polled_cursor_[plan.user] == plan.raw_cursor;
+    if (read_everything || plan.user >= USER_SLOTS || !this->has_polled_cursor_[plan.user] ||
+        this->polled_cursor_[plan.user] != plan.raw_cursor)
+      return false;
+    if (plan.unread == 0)
+      return true;
+    OMRON_LOG_D(TAG, "[%s] User %u cursor has not moved, but the cuff counts %u unread; reading the ring",
+                this->host_->session_address(), static_cast<unsigned>(plan.user + 1),
+                static_cast<unsigned>(plan.unread));
+    return false;
   });
   if (skipped != 0) {
     OMRON_LOG_D(TAG, "[%s] %u user ring(s) unchanged since the last session; not re-reading them",
@@ -631,7 +647,7 @@ bool OmronSession::build_record_reads_() {
   bool extended = false;
   for (const auto &user_plan : this->record_plans_) {
     for (const auto &read : user_plan.reads) {
-      if (!this->transaction_.extend_reads(read.address, read.length, layout.transfer_block_size))
+      if (!this->transaction_.extend_reads(read.address, read.length, layout.transfer_block_size, ReadPurpose::RECORDS))
         return false;
       extended = true;
     }

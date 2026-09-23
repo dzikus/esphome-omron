@@ -60,6 +60,10 @@ struct HarvestedUser {
   uint16_t dropped_in_future{0};
   bool history_truncated{false};
 
+  bool newest_outnumbered{false};
+  uint16_t outnumbering_slot{0};
+  uint16_t outnumbering_record{0};
+
   // Where the watermark should stand once this history has actually gone out.
   // Not advanced by the caller until then: advancing it here would be a promise
   // the node has not kept.

@@ -115,10 +115,6 @@ static const char *const HEM_7188T1_ALIASES[] = {
     "HEM-7188T1",
 };
 
-static const char *const HEM_7361T_ALIASES[] = {
-    "HEM-7361T",
-};
-
 static const char *const HEM_7380T1_ALIASES[] = {
     "HEM-7183T1-AP",
     "HEM-7183T1-CAP",
@@ -253,8 +249,8 @@ static const char *const HEM_7342T_ALIASES[] = {
     "HEM-7159T_AP3",  "HEM-7342T-CA",     "HEM-7342T-Z",      "HEM-7342T1-ACACD6", "HEM-7342T1-ACDC6", "HEM-7343T",
     "HEM-7343T-Z",    "HEM-7361T-E",      "HEM-7344JT_ASH3",  "HEM-7344T_ASH3BK",  "HEM-7344T_ASH3SL", "HEM-7346T-AJC3",
     "HEM-7346T-AJE3", "HEM-7346T2-AJC32", "HEM-7346T2-AJE32", "HEM-7346T_ABR3",    "HEM-7346T_AP3",    "HEM-7347T-AJC3",
-    "HEM-7347T-AJE3", "HEM-7347T2-AJC32", "HEM-7347T2-AJE32", "HEM-7349T_ABR",     "HEM-7361T-ALRU",   "HEM-7361T-AP",
-    "HEM-7361T-D",    "HEM-7361T-EBK",    "HEM-7361T1-BS",    "HEM-7361T_ESL",
+    "HEM-7347T-AJE3", "HEM-7347T2-AJC32", "HEM-7347T2-AJE32", "HEM-7349T_ABR",     "HEM-7361T",        "HEM-7361T-ALRU",
+    "HEM-7361T-AP",   "HEM-7361T-D",      "HEM-7361T-EBK",    "HEM-7361T1-BS",     "HEM-7361T_ESL",
 };
 
 static const char *const HEM_7530T_ALIASES[] = {
@@ -1298,35 +1294,6 @@ static constexpr OmronProfile PROFILE_CATALOG[] = {
         .user_count = 1,
         .equivalent_model_ids = HEM_7188T1_ALIASES,
         .equivalent_model_id_count = alias_count(HEM_7188T1_ALIASES),
-        .clock_sync_threshold_s = 0,
-        .record_sequence_offset = NO_RECORD_SEQUENCE,
-        .measurement_fields = MEASUREMENT_FIELDS_ALL,
-        .confidence = OmronProfileConfidence::REFERENCE_ONLY,
-    },
-    {
-        .id = OmronProfileId::HEM_7361T,
-        .model = "HEM-7361T",
-        .gatt = &OMRON_CLASSIC_GATT,
-        .security_mode = SecurityMode::CUSTOM_KEY,
-        .bond_policy = BondPolicy::NONE,
-        .unlock_mode = UnlockMode::CLASSIC_KEY,
-        .token_required = false,
-        .byte_order = ByteOrder::LITTLE,
-        .cursor_byte_order = CursorByteOrder::SAME_AS_RECORD,
-        .record_format = RecordFormat::CLASSIC_VITAL_14,
-        .record_size = 0x10,
-        .transmission_block_size = 0x10,
-        .settings_read_address = 0x0010,
-        .settings_write_address = 0x0054,
-        .settings_index_region_size = 0x10,
-        .user_block_size = 14,
-        .clock_fields_offset = 8,
-        .time_region_start = 0x2C,
-        .time_region_end = 0x3C,
-        .users = {{{0x0098, 100, 0x00, 0x04, 0x00FF, -1}, {0x06D8, 100, 0x02, 0x06, 0x00FF, -1}}},
-        .user_count = 2,
-        .equivalent_model_ids = HEM_7361T_ALIASES,
-        .equivalent_model_id_count = alias_count(HEM_7361T_ALIASES),
         .clock_sync_threshold_s = 0,
         .record_sequence_offset = NO_RECORD_SEQUENCE,
         .measurement_fields = MEASUREMENT_FIELDS_ALL,

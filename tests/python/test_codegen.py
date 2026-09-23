@@ -53,6 +53,14 @@ class ProfileOrAuto(unittest.TestCase):
         message = str(caught.exception)
         self.assertTrue(any(name in message for name in omron.OMRON_PROFILES))
 
+    def test_a_retired_profile_names_its_replacement(self):
+        for retired, replacement in omron.RETIRED_PROFILES.items():
+            self.assertNotIn(retired, omron.OMRON_PROFILES)
+            self.assertIn(replacement, omron.OMRON_PROFILES)
+            with self.assertRaises(cv.Invalid) as caught:
+                omron._profile_or_auto(retired.upper())
+            self.assertIn(f"profile: {replacement}", str(caught.exception))
+
 
 class BirthDate(unittest.TestCase):
     def test_iso_string(self):

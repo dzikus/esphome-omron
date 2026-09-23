@@ -56,6 +56,8 @@ inline std::vector<uint8_t> make_response(PacketType type, uint16_t address = 0,
 void test_session_replays_the_captured_frame_order();
 void test_session_ignores_a_stray_frame_without_resending();
 void test_session_with_unmoved_cursors_reads_only_two_frames();
+void test_session_skips_a_ring_only_when_the_cuff_counts_nothing_unread();
+void test_session_reads_past_memory_nobody_wrote();
 void test_session_full_read_on_pairing_needs_both_the_option_and_the_flag();
 void test_session_registration_writes_reach_the_wire();
 void test_session_survives_the_reply_racing_the_write_ack();

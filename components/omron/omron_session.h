@@ -306,8 +306,9 @@ class OmronSession {
   bool clock_write_queued_{false};
 
   // Where each user's write cursor stood at the last successful session. A
-  // cursor that has not moved means that ring holds nothing new, so its record
-  // frames are not worth sending. Committed only when a session ends cleanly.
+  // cursor that has not moved, with nothing counted as unread, means that ring
+  // holds nothing new, so its record frames are not worth sending. Committed
+  // only when a session ends cleanly.
   //
   // Deliberately not persisted, however much it looks like it should be: the
   // one moment it would be read back from NVS is the first session after a

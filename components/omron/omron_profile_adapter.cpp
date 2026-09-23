@@ -54,7 +54,8 @@ ProfileAdapterError make_poll_layout(const OmronProfile &profile, PollLayout &la
 
   for (uint8_t user_index = 0; user_index < profile.user_count; user_index++) {
     const OmronUserMemoryLayout &source = profile.users[user_index];
-    if (source.record_count == 0 || static_cast<uint16_t>(source.write_cursor_offset) + 2 > layout.index_size)
+    if (source.record_count == 0 || static_cast<uint16_t>(source.write_cursor_offset) + 2 > layout.index_size ||
+        static_cast<uint16_t>(source.unread_counter_offset) + 2 > layout.index_size)
       return ProfileAdapterError::INVALID_RECORD_LAYOUT;
 
     UserPollLayout &target = layout.users[user_index];
@@ -62,6 +63,7 @@ ProfileAdapterError make_poll_layout(const OmronProfile &profile, PollLayout &la
     target.cursor_offset = source.write_cursor_offset;
     target.cursor_width = 2;
     target.cursor_order = cursor_memory_order(profile);
+    target.unread_offset = source.unread_counter_offset;
     target.ring.records_address = source.record_start_address;
     target.ring.record_count = source.record_count;
     target.ring.record_size = profile.record_size;
