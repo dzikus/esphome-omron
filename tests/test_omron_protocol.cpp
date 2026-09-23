@@ -271,6 +271,20 @@ static void test_protocol_requests_and_parsing() {
       xor_bytes(std::span<const uint8_t>(bad_payload_length).first(bad_payload_length.size() - 1));
   assert(parse_response(bad_payload_length, response) == ProtocolError::PAYLOAD_LENGTH_MISMATCH);
 
+  const std::vector<uint8_t> unwritten_modern{0x08, 0x81, 0x00, 0x06, 0x38, 0x30, 0xE3, 0x64};
+  const std::vector<uint8_t> unwritten_classic{0x08, 0x81, 0x00, 0x05, 0x88, 0x38, 0xE3, 0xDF};
+  for (const auto &unwritten : {unwritten_modern, unwritten_classic}) {
+    assert(parse_response(unwritten, response) == ProtocolError::NONE);
+    assert(response.type == PacketType::READ_RESPONSE);
+    assert(response.status == READ_RESULT_UNWRITTEN);
+    assert(response.data.empty());
+  }
+  assert(response.address == 0x0588);
+  auto bare = unwritten_modern;
+  bare[6] = 0x00;
+  bare.back() = xor_bytes(std::span<const uint8_t>(bare).first(bare.size() - 1));
+  assert(parse_response(bare, response) == ProtocolError::PAYLOAD_LENGTH_MISMATCH);
+
   const std::array<uint8_t, 4> nonce{0x01, 0x23, 0x45, 0x67};
   const auto token_request = make_token_request(nonce);
   assert(token_request[0] == 0x11);
@@ -518,6 +532,27 @@ static void test_transaction_engine() {
   assert(wrong_size.accept_frame(start) == ProtocolError::NONE);
   const auto wrong_size_reply = make_response(PacketType::READ_RESPONSE, 0x0500, {1});
   assert(wrong_size.accept_frame(wrong_size_reply) == ProtocolError::PAYLOAD_LENGTH_MISMATCH);
+
+  const std::vector<uint8_t> unwritten{0x08, 0x81, 0x00, 0x06, 0x38, 0x30, 0xE3, 0x64};
+  OmronTransaction unwritten_settings;
+  assert(unwritten_settings.add_read_range(0x0638, 0x30, 0x30));
+  assert(unwritten_settings.begin(TransactionUnlock::NONE, OmronBindKey{}, zero_nonce));
+  assert(unwritten_settings.accept_frame(start) == ProtocolError::NONE);
+  assert(unwritten_settings.accept_frame(unwritten) == ProtocolError::NOTHING_WRITTEN);
+  assert(unwritten_settings.state() == TransactionState::FAILED);
+  assert(unwritten_settings.received_blocks().empty());
+
+  OmronTransaction unwritten_ring;
+  assert(unwritten_ring.add_read_range(0x0260, 2, 2));
+  assert(unwritten_ring.begin(TransactionUnlock::NONE, OmronBindKey{}, zero_nonce));
+  assert(unwritten_ring.accept_frame(start) == ProtocolError::NONE);
+  assert(unwritten_ring.accept_frame(make_response(PacketType::READ_RESPONSE, 0x0260, {1, 2})) == ProtocolError::NONE);
+  assert(unwritten_ring.extend_reads(0x0638, 0x30, 0x38, ReadPurpose::RECORDS));
+  assert(unwritten_ring.accept_frame(unwritten) == ProtocolError::NONE);
+  assert(unwritten_ring.unwritten_blocks() == 1);
+  assert(unwritten_ring.received_blocks().back().address == 0x0638);
+  assert(unwritten_ring.received_blocks().back().data == std::vector<uint8_t>(0x30, 0xFF));
+  assert(unwritten_ring.state() == TransactionState::END_PENDING);
 
   OmronTransaction end_error;
   assert(end_error.add_read_range(0x0600, 1, 1));
@@ -2743,6 +2778,7 @@ int main() {
   groups += run_group(test_command_writer_edge_cases);
   groups += run_group(test_session_ignores_a_stray_frame_without_resending);
   groups += run_group(test_session_with_unmoved_cursors_reads_only_two_frames);
+  groups += run_group(test_session_reads_past_memory_nobody_wrote);
   groups += run_group(test_session_full_read_on_pairing_needs_both_the_option_and_the_flag);
   groups += run_group(test_session_registration_writes_reach_the_wire);
   groups += run_group(test_session_survives_the_reply_racing_the_write_ack);

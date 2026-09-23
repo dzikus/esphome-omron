@@ -487,6 +487,10 @@ void OmronSession::complete_reply_(ProtocolError error, const char *stray_what) 
       this->diagnostics_->protocol_failures++;
       this->diagnostics_->last_protocol_error = error;
     }
+    if (error == ProtocolError::NOTHING_WRITTEN) {
+      OMRON_LOG_W(TAG, "[%s] Nothing written at 0x%04X, which this profile reads as settings; check the profile",
+                  this->host_->session_address(), static_cast<unsigned>(this->active_command_.address));
+    }
     this->wire_ = CommandWireState::IDLE;
     this->fail_(protocol_error_to_string(error), 0);
     return;
@@ -569,6 +573,10 @@ void OmronSession::handle_transaction_complete_() {
   this->record_memory_.clear();
   for (const auto &block : this->transaction_.received_blocks())
     this->record_memory_.add_block(block.address, block.data);
+  if (this->transaction_.unwritten_blocks() != 0) {
+    OMRON_LOG_I(TAG, "[%s] %u record block(s) came back as never written; read as empty slots",
+                this->host_->session_address(), static_cast<unsigned>(this->transaction_.unwritten_blocks()));
+  }
   this->host_->session_transfer_complete();
 }
 
@@ -631,7 +639,7 @@ bool OmronSession::build_record_reads_() {
   bool extended = false;
   for (const auto &user_plan : this->record_plans_) {
     for (const auto &read : user_plan.reads) {
-      if (!this->transaction_.extend_reads(read.address, read.length, layout.transfer_block_size))
+      if (!this->transaction_.extend_reads(read.address, read.length, layout.transfer_block_size, ReadPurpose::RECORDS))
         return false;
       extended = true;
     }

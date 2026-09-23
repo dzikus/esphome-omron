@@ -50,19 +50,24 @@ ProtocolError parse_response(std::span<const uint8_t> frame, ResponseFrame &resp
   // eight-byte frame. Reading it as a length rejected every start response and
   // the session never got past the handshake.
   size_t payload_length = 0;
+  bool unwritten = false;
   if (raw_type == static_cast<uint16_t>(PacketType::READ_RESPONSE)) {
     payload_length = frame[5];
     // The declared payload must fit, but it need not fill the frame. Both
     // references slice the payload out by declared length and ignore whatever
     // follows, so trailing padding is normal device behaviour.
-    if (READ_RESPONSE_OVERHEAD + payload_length > frame.size())
-      return ProtocolError::PAYLOAD_LENGTH_MISMATCH;
+    if (READ_RESPONSE_OVERHEAD + payload_length > frame.size()) {
+      if (frame.size() != READ_RESPONSE_OVERHEAD || frame[6] != READ_RESULT_UNWRITTEN)
+        return ProtocolError::PAYLOAD_LENGTH_MISMATCH;
+      unwritten = true;
+      payload_length = 0;
+    }
   }
 
   response.type = static_cast<PacketType>(raw_type);
   response.address = static_cast<uint16_t>((static_cast<uint16_t>(frame[FRAME_ADDRESS_OFFSET]) << 8) |
                                            frame[FRAME_ADDRESS_OFFSET + 1]);
-  response.status = raw_type == static_cast<uint16_t>(PacketType::END_RESPONSE) ? frame[6] : 0;
+  response.status = raw_type == static_cast<uint16_t>(PacketType::END_RESPONSE) || unwritten ? frame[6] : 0;
   response.data.clear();
   if (payload_length != 0) {
     const std::span<const uint8_t> payload = frame.subspan(RESPONSE_PAYLOAD_OFFSET, payload_length);
@@ -181,6 +186,8 @@ const char *protocol_error_to_string(ProtocolError error) {
       return "retry attempts exhausted";
     case ProtocolError::STRAY_FRAME:
       return "frame ignored; the transaction was not waiting on it";
+    case ProtocolError::NOTHING_WRITTEN:
+      return "the cuff has nothing written at an address this session needs";
   }
   return "unknown protocol error";
 }

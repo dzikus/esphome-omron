@@ -33,6 +33,7 @@ enum class [[nodiscard]] ProtocolError : uint8_t {
   // progress, clears its wait and re-sends a command that is still in flight,
   // without touching the attempt counter meant to bound that.
   STRAY_FRAME,
+  NOTHING_WRITTEN,
 };
 
 enum class PacketType : uint16_t {
@@ -70,6 +71,7 @@ inline constexpr size_t READ_RESPONSE_OVERHEAD = 8;
 inline constexpr size_t FRAME_ADDRESS_OFFSET = 3;
 inline constexpr uint8_t REQUEST_READ_HIGH = 0x01;
 inline constexpr uint8_t REQUEST_READ_LOW = 0x00;
+inline constexpr uint8_t READ_RESULT_UNWRITTEN = 0xE3;
 
 constexpr uint8_t xor_bytes(std::span<const uint8_t> data) {
   uint8_t result = 0;

@@ -49,9 +49,15 @@ struct ReadRange {
   uint8_t block_size{0};
 };
 
+enum class ReadPurpose : uint8_t {
+  SETTINGS = 0,
+  RECORDS,
+};
+
 struct ReadBlock {
   uint16_t address{0};
   uint8_t length{0};
+  ReadPurpose purpose{ReadPurpose::SETTINGS};
 };
 
 struct ReceivedBlock {
@@ -84,7 +90,8 @@ class OmronTransaction {
   // gone out. The end opcode closes the whole session: after it a fresh start
   // is never answered and the link drops a few seconds later, so index and
   // record reads have to share one envelope.
-  [[nodiscard]] bool extend_reads(uint16_t address, uint16_t length, uint8_t block_size);
+  [[nodiscard]] bool extend_reads(uint16_t address, uint16_t length, uint8_t block_size,
+                                  ReadPurpose purpose = ReadPurpose::SETTINGS);
   // Queues a write for after the reads and before the end command, for the same
   // reason. Several fit because registering a user takes two runs. The frame
   // must already be built: this engine composes nothing, so it cannot be talked
@@ -131,11 +138,12 @@ class OmronTransaction {
   // Non-zero when the cuff refused something at the end opcode. The reads are
   // still good, so this is reported rather than allowed to discard them.
   uint8_t end_status() const { return this->end_status_; }
+  uint16_t unwritten_blocks() const { return this->unwritten_blocks_; }
   const std::vector<ReadBlock> &plan() const { return this->plan_; }
   const std::vector<ReceivedBlock> &received_blocks() const { return this->received_blocks_; }
 
  private:
-  void append_blocks_(uint16_t address, uint16_t length, uint8_t block_size);
+  void append_blocks_(uint16_t address, uint16_t length, uint8_t block_size, ReadPurpose purpose);
   bool build_plan_();
   void advance_after_start_();
   void advance_after_read_();
@@ -166,6 +174,7 @@ class OmronTransaction {
   uint8_t attempt_{0};
   uint8_t stray_frames_{0};
   uint8_t end_status_{0};
+  uint16_t unwritten_blocks_{0};
   TransactionState state_{TransactionState::IDLE};
   ProtocolError error_{ProtocolError::NONE};
 };
