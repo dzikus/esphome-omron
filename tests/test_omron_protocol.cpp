@@ -2276,7 +2276,7 @@ static void test_profile_adapter_and_poll_plan() {
   layout.backtrack_records = 2;
   std::vector<uint8_t> index_data(layout.index_size, 0);
   write_u16_le(index_data, layout.users[0].cursor_offset, 1);
-  write_u16_le(index_data, layout.users[1].cursor_offset, 0);
+  write_u16_le(index_data, layout.users[1].cursor_offset, 0x4000);
   std::vector<UserRecordPlan> plans;
   assert(build_record_plan(layout, index_data, plans));
   assert(plans.size() == 2);
@@ -2290,11 +2290,10 @@ static void test_profile_adapter_and_poll_plan() {
   assert(record_address(layout.users[0].ring, 0, slot_zero_address));
   assert(plans[0].reads.size() == 1);
   assert(plans[0].reads[0].address == slot_zero_address && plans[0].reads[0].length == 16);
-  // A cursor of zero says nothing about how many records exist, so the depth
-  // stands and the wrapped slots are still read. Two reads: the newest slot
-  // alone first, then the remaining two coalesced. One 48-byte read of all three
-  // in address order would put the newest reading last on the wire.
-  assert(plans[1].user == 1 && plans[1].raw_cursor == 0);
+  // Two reads: the newest slot alone first, then the remaining two coalesced.
+  // One 48-byte read of all three in address order would put the newest reading
+  // last on the wire.
+  assert(plans[1].user == 1 && plans[1].raw_cursor == 0x4000);
   assert((plans[1].slots == std::vector<uint16_t>{59, 58, 57}));
   assert(plans[1].reads.size() == 2);
   uint16_t newest_address = 0;
@@ -2357,6 +2356,14 @@ static void test_profile_adapter_and_poll_plan() {
   write_u16_le(wrapped, wrapped_plan.users[0].cursor_offset, 0x8003);
   assert(build_record_plan(wrapped_plan, wrapped, plans));
   assert((plans[0].slots == std::vector<uint16_t>{2, 1, 0}));
+  write_u16_le(wrapped, wrapped_plan.users[1].cursor_offset, 0x8000);
+  assert(build_record_plan(wrapped_plan, wrapped, plans));
+  assert(plans.size() == 2 && plans[1].user == 1 && plans[1].raw_cursor == 0x8000);
+  assert(plans[1].slots.empty() && plans[1].reads.empty());
+  PollLayout unbiased = wrapped_plan;
+  unbiased.users[1].ring.cursor_bias = 0;
+  assert(build_record_plan(unbiased, wrapped, plans));
+  assert((plans[1].slots == std::vector<uint16_t>{0}));
 
   assert(!build_record_plan(layout, {}, plans));
   assert(!build_record_plan(layout, std::span<const uint8_t>(index_data).first(index_data.size() - 1), plans));
@@ -2805,6 +2812,7 @@ int main() {
   groups += run_group(test_session_with_unmoved_cursors_reads_only_two_frames);
   groups += run_group(test_session_skips_a_ring_only_when_the_cuff_counts_nothing_unread);
   groups += run_group(test_session_reads_past_memory_nobody_wrote);
+  groups += run_group(test_session_reads_nothing_from_an_empty_ring);
   groups += run_group(test_session_full_read_on_pairing_needs_both_the_option_and_the_flag);
   groups += run_group(test_session_registration_writes_reach_the_wire);
   groups += run_group(test_session_survives_the_reply_racing_the_write_ack);

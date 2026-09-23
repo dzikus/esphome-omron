@@ -76,7 +76,11 @@ bool build_record_plan(const PollLayout &layout, std::span<const uint8_t> index_
     const bool ring_full = (raw_cursor & user.ring.cursor_full_flag) != 0;
     const uint32_t masked = raw_cursor & user.ring.cursor_mask;
     const int32_t written = static_cast<int32_t>(masked) + user.ring.cursor_bias + 1;
-    if (!ring_full && written > 0 && written < static_cast<int32_t>(user.ring.record_count) &&
+    if (!ring_full && written <= 0) {
+      plans.push_back(std::move(plan));
+      continue;
+    }
+    if (!ring_full && written < static_cast<int32_t>(user.ring.record_count) &&
         requested > static_cast<uint16_t>(written)) {
       requested = static_cast<uint16_t>(written);
     }

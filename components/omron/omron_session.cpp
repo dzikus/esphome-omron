@@ -612,6 +612,14 @@ bool OmronSession::build_record_reads_() {
     }
   }
 
+  const size_t empty = std::erase_if(this->record_plans_, [this](const UserRecordPlan &plan) {
+    if (!plan.slots.empty())
+      return false;
+    OMRON_LOG_D(TAG, "[%s] User %u ring holds no records; nothing to read", this->host_->session_address(),
+                static_cast<unsigned>(plan.user + 1));
+    return true;
+  });
+
   // Drop the users whose ring has not moved since the last session that
   // finished and who have nothing the cuff counts as unread. Their entities
   // keep the values they already hold, which is what those values were: the
@@ -652,10 +660,9 @@ bool OmronSession::build_record_reads_() {
       extended = true;
     }
   }
-  // No record reads left is a failure only when there were none to begin with.
   // Every ring being unchanged is the ordinary case once this node has read the
   // cuff once, and that session still has a clock to read and writes to send.
-  if (!extended && skipped == 0)
+  if (!extended && skipped == 0 && empty == 0)
     return false;
 
   this->record_memory_.clear();
