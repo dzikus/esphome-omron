@@ -1165,18 +1165,17 @@ void OmronBLEClient::check_reported_model_(const std::string &reported) {
   this->model_verdict_ = verdict;
 
   switch (verdict) {
-    case ProfileVerdict::MISMATCH:
+    case ProfileVerdict::MISMATCH: {
+      const char *difference = memory_map_difference(*this->profile_, *identification.profile);
       ESP_LOGE(TAG,
                "[%s] Configured profile %s does not match this cuff. It reports \"%s\", which this catalog reads as "
-               "%s: settings at 0x%04X and records at 0x%04X, against the configured 0x%04X and 0x%04X. Readings "
-               "decoded from the wrong region still look like blood pressure, so check the profile before trusting "
-               "them.",
+               "%s, and the two differ in %s. Readings decoded from the wrong map still look like blood pressure, so "
+               "check the profile before trusting them; this cuff's own string points to `profile: %s`.",
                this->address_str(), this->profile_->model, reported.c_str(), identification.profile->model,
-               static_cast<unsigned>(identification.profile->settings_read_address),
-               static_cast<unsigned>(identification.profile->users[0].record_start_address),
-               static_cast<unsigned>(this->profile_->settings_read_address),
-               static_cast<unsigned>(this->profile_->users[0].record_start_address));
+               difference != nullptr ? difference : "their memory map",
+               profile_config_key(*identification.profile).c_str());
       break;
+    }
     case ProfileVerdict::COMPATIBLE:
       ESP_LOGI(TAG, "[%s] Cuff identified as %s; configured profile %s addresses the same memory", this->address_str(),
                identification.profile->model, this->profile_->model);

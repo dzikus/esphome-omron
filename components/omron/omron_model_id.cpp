@@ -85,29 +85,59 @@ const OmronTradeName *trade_name_for(std::string_view reported) {
 
 }  // namespace
 
-bool same_record_memory_map(const OmronProfile &a, const OmronProfile &b) {
+const char *memory_map_difference(const OmronProfile &a, const OmronProfile &b) {
   // Everything that decides which bytes are read and what they mean. Left out
   // on purpose: transmission_block_size, which only frames the reads and whose
   // being wrong shows up as a short or failed reply rather than as a plausible
   // number; and everything about bonding, which cannot misread anything.
-  if (a.settings_read_address != b.settings_read_address || a.settings_write_address != b.settings_write_address ||
-      a.settings_index_region_size != b.settings_index_region_size || a.user_block_size != b.user_block_size)
-    return false;
-  if (a.record_size != b.record_size || a.record_format != b.record_format || a.byte_order != b.byte_order ||
-      a.cursor_byte_order != b.cursor_byte_order || a.record_sequence_offset != b.record_sequence_offset)
-    return false;
+  if (a.settings_read_address != b.settings_read_address)
+    return "settings read address";
+  if (a.settings_write_address != b.settings_write_address)
+    return "settings write address";
+  if (a.settings_index_region_size != b.settings_index_region_size)
+    return "index region size";
+  if (a.user_block_size != b.user_block_size)
+    return "user block size";
+  if (a.record_size != b.record_size)
+    return "record size";
+  if (a.record_format != b.record_format)
+    return "record format";
+  if (a.byte_order != b.byte_order)
+    return "record byte order";
+  if (a.cursor_byte_order != b.cursor_byte_order)
+    return "cursor byte order";
+  if (a.record_sequence_offset != b.record_sequence_offset)
+    return "record sequence offset";
   if (a.user_count != b.user_count)
-    return false;
+    return "user count";
+  static constexpr std::array<std::array<const char *, 6>, OMRON_MAX_USERS> USER_FIELDS{{
+      {"user 1 record address", "user 1 ring depth", "user 1 cursor offset", "user 1 unread counter offset",
+       "user 1 cursor mask", "user 1 slot bias"},
+      {"user 2 record address", "user 2 ring depth", "user 2 cursor offset", "user 2 unread counter offset",
+       "user 2 cursor mask", "user 2 slot bias"},
+  }};
   for (uint8_t user = 0; user < a.user_count && user < OMRON_MAX_USERS; user++) {
     const OmronUserMemoryLayout &left = a.users[user];
     const OmronUserMemoryLayout &right = b.users[user];
-    if (left.record_start_address != right.record_start_address || left.record_count != right.record_count ||
-        left.write_cursor_offset != right.write_cursor_offset ||
-        left.unread_counter_offset != right.unread_counter_offset ||
-        left.write_cursor_mask != right.write_cursor_mask || left.slot_index_bias != right.slot_index_bias)
-      return false;
+    const std::array<const char *, 6> &names = USER_FIELDS[user];
+    if (left.record_start_address != right.record_start_address)
+      return names[0];
+    if (left.record_count != right.record_count)
+      return names[1];
+    if (left.write_cursor_offset != right.write_cursor_offset)
+      return names[2];
+    if (left.unread_counter_offset != right.unread_counter_offset)
+      return names[3];
+    if (left.write_cursor_mask != right.write_cursor_mask)
+      return names[4];
+    if (left.slot_index_bias != right.slot_index_bias)
+      return names[5];
   }
-  return true;
+  return nullptr;
+}
+
+bool same_record_memory_map(const OmronProfile &a, const OmronProfile &b) {
+  return memory_map_difference(a, b) == nullptr;
 }
 
 ModelIdentification identify_model(std::string_view reported, OmronStack stack) {

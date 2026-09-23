@@ -247,8 +247,8 @@ void test_model_id_map_comparison_looks_at_every_field() {
     void (*apply)(OmronProfile &);
   };
   static const Perturbation PERTURBATIONS[] = {
-      {"settings read base", [](OmronProfile &p) { p.settings_read_address ^= 0x0100; }},
-      {"settings write base", [](OmronProfile &p) { p.settings_write_address ^= 0x0100; }},
+      {"settings read address", [](OmronProfile &p) { p.settings_read_address ^= 0x0100; }},
+      {"settings write address", [](OmronProfile &p) { p.settings_write_address ^= 0x0100; }},
       {"index region size", [](OmronProfile &p) { p.settings_index_region_size ^= 0x08; }},
       {"user block size", [](OmronProfile &p) { p.user_block_size ^= 0x04; }},
       {"record size", [](OmronProfile &p) { p.record_size ^= 0x02; }},
@@ -257,7 +257,7 @@ void test_model_id_map_comparison_looks_at_every_field() {
          p.record_format = p.record_format == RecordFormat::CLASSIC_VITAL_14 ? RecordFormat::PLAIN_DATE_VITAL
                                                                              : RecordFormat::CLASSIC_VITAL_14;
        }},
-      {"byte order",
+      {"record byte order",
        [](OmronProfile &p) { p.byte_order = p.byte_order == ByteOrder::LITTLE ? ByteOrder::BIG : ByteOrder::LITTLE; }},
       {"cursor byte order",
        [](OmronProfile &p) {
@@ -266,17 +266,21 @@ void test_model_id_map_comparison_looks_at_every_field() {
        }},
       {"record sequence offset", [](OmronProfile &p) { p.record_sequence_offset ^= 0x04; }},
       {"user count", [](OmronProfile &p) { p.user_count = 1; }},
-      {"record start address", [](OmronProfile &p) { p.users[0].record_start_address ^= 0x0100; }},
-      {"ring depth", [](OmronProfile &p) { p.users[0].record_count ^= 0x04; }},
-      {"write cursor offset", [](OmronProfile &p) { p.users[0].write_cursor_offset ^= 0x02; }},
-      {"unread counter offset", [](OmronProfile &p) { p.users[0].unread_counter_offset ^= 0x02; }},
-      {"write cursor mask", [](OmronProfile &p) { p.users[0].write_cursor_mask ^= 0x0080; }},
-      {"slot index bias", [](OmronProfile &p) { p.users[0].slot_index_bias ^= 0x01; }},
+      {"user 1 record address", [](OmronProfile &p) { p.users[0].record_start_address ^= 0x0100; }},
+      {"user 1 ring depth", [](OmronProfile &p) { p.users[0].record_count ^= 0x04; }},
+      {"user 1 cursor offset", [](OmronProfile &p) { p.users[0].write_cursor_offset ^= 0x02; }},
+      {"user 1 unread counter offset", [](OmronProfile &p) { p.users[0].unread_counter_offset ^= 0x02; }},
+      {"user 1 cursor mask", [](OmronProfile &p) { p.users[0].write_cursor_mask ^= 0x0080; }},
+      {"user 1 slot bias", [](OmronProfile &p) { p.users[0].slot_index_bias ^= 0x01; }},
       // The second user's block matters as much as the first: a profile that
       // agreed about user 1 and not user 2 would publish one person's readings
       // and somebody else's.
-      {"second user record start", [](OmronProfile &p) { p.users[1].record_start_address ^= 0x0100; }},
-      {"second user ring depth", [](OmronProfile &p) { p.users[1].record_count ^= 0x04; }},
+      {"user 2 record address", [](OmronProfile &p) { p.users[1].record_start_address ^= 0x0100; }},
+      {"user 2 ring depth", [](OmronProfile &p) { p.users[1].record_count ^= 0x04; }},
+      {"user 2 cursor offset", [](OmronProfile &p) { p.users[1].write_cursor_offset ^= 0x02; }},
+      {"user 2 unread counter offset", [](OmronProfile &p) { p.users[1].unread_counter_offset ^= 0x02; }},
+      {"user 2 cursor mask", [](OmronProfile &p) { p.users[1].write_cursor_mask ^= 0x0080; }},
+      {"user 2 slot bias", [](OmronProfile &p) { p.users[1].slot_index_bias ^= 0x01; }},
   };
 
   for (const Perturbation &perturbation : PERTURBATIONS) {
@@ -286,12 +290,14 @@ void test_model_id_map_comparison_looks_at_every_field() {
       std::printf("    same_record_memory_map ignores %s\n", perturbation.what);
       assert(false);
     }
+    expect_string(memory_map_difference(base, altered), perturbation.what);
   }
 
   // An untouched copy still compares equal, so the loop above is not simply
   // reporting that a copy is never equal to its original.
   const OmronProfile copy = base;
   assert(same_record_memory_map(base, copy));
+  assert(memory_map_difference(base, copy) == nullptr);
 
   // And a field that cannot misread anything is deliberately not compared. The
   // transfer block only frames the reads: wrong, it produces a short reply or
