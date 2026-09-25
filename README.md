@@ -291,6 +291,33 @@ Set `OMRON_TEST_LOG=1` to see the component's own log lines while the suite runs
 They are the lines the device prints, and they are off by default so that a run
 shows its assertions and nothing else.
 
+`python -m unittest discover -s tests/python` runs the code generation and table
+tests; it needs esphome installed.
+
+New functionality comes with tests in the same pull request: protocol, session
+and publishing logic in `tests/`, code generation and the tables in
+`tests/python/`.
+
+## Issues and pull requests
+
+Report problems at <https://github.com/dzikus/esphome-omron/issues>. For a cuff
+that is not recognised or is read wrong, use the
+[Cuff report](https://github.com/dzikus/esphome-omron/issues/new?template=new_model.yml)
+form. Include the component version or commit, the ESPHome version, the cuff
+model and profile, the configuration and the node log, with the MAC address and
+the `bindkey` removed. Report security issues privately, see
+[SECURITY.md](SECURITY.md).
+
+Pull requests go against `main`:
+
+- Run `pre-commit install` once. The hooks format C++ and Python and check that
+  commit messages follow Conventional Commits.
+- A pull request that adds functionality adds tests for it, see
+  [Development](#development).
+- CI runs pre-commit, the unit tests, clang-tidy and the ESP32 builds on every
+  pull request. All of them must pass before merge.
+- User-visible changes get an entry in [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 GPL-3.0. See [`LICENSE`](LICENSE).
