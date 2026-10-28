@@ -20,6 +20,13 @@ namespace esphome::omron {
 
 static const char *const TAG = "omron.ble";
 
+namespace {
+
+constexpr esp_ble_key_mask_t ENC_KEY = ESP_BLE_ENC_KEY_MASK;
+constexpr esp_ble_key_mask_t ID_KEY = ESP_BLE_ID_KEY_MASK;
+
+}  // namespace
+
 void OmronBLEClient::log_local_address_() {
   esp_bd_addr_t addr{};
   uint8_t addr_type = 0;
@@ -191,8 +198,7 @@ void OmronBLEClient::start_security_() {
   if (bond == BondLookupResult::PRESENT) {
     ESP_LOGI(TAG, "[%s] CONNECT: bond stored (keys 0x%02x peer-LTK=%s IRK=%s); waiting for the cuff to ask",
              this->address_str(), static_cast<unsigned>(this->bond_key_mask_),
-             YESNO((this->bond_key_mask_ & ESP_BLE_ENC_KEY_MASK) != 0),
-             YESNO((this->bond_key_mask_ & ESP_BLE_ID_KEY_MASK) != 0));
+             YESNO((this->bond_key_mask_ & ENC_KEY) != 0), YESNO((this->bond_key_mask_ & ID_KEY) != 0));
     this->security_started_ = true;
     this->auth_started_at_ = millis();
     this->diagnostics_.phase = SessionPhase::WAITING_FOR_AUTH;
@@ -381,12 +387,12 @@ BondLookupResult OmronBLEClient::lookup_own_bond_(esp_err_t *error) {
       // key is present and usable, and "is it all zero" answers exactly that
       // while printing nothing an attacker could use - a log stream reaches the
       // console, whoever runs esphome logs, and whatever collects it.
-      if ((keys.key_mask & ESP_BLE_ENC_KEY_MASK) != 0) {
+      if ((keys.key_mask & ENC_KEY) != 0) {
         ESP_LOGI(TAG, "[%s] Bond PENC: ediv=0x%04X size=%u level=%u ltk=%s", this->address_str(), keys.penc_key.ediv,
                  static_cast<unsigned>(keys.penc_key.key_size), static_cast<unsigned>(keys.penc_key.sec_level),
                  all_zero_(keys.penc_key.ltk) ? "ALL ZERO" : "present");
       }
-      if ((keys.key_mask & ESP_BLE_ID_KEY_MASK) != 0) {
+      if ((keys.key_mask & ID_KEY) != 0) {
         // The identity address stays: it is the peer's public identity, it is
         // already in the config file, and a mismatch against the address we
         // connect to is one of the two failures this whole block exists to

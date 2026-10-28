@@ -6,38 +6,42 @@ namespace esphome::omron {
 
 const OmronGattCapabilities OMRON_CLASSIC_GATT = {
     .parent_service_uuid = "ecbe3980-c9a2-11e1-b1bd-0002a5d5c51b",
-    .rx_channel_uuids = {{
-        "49123040-aee8-11e1-a74d-0002a5d5c51b",
-        "4d0bf320-aee8-11e1-a0d9-0002a5d5c51b",
-        "5128ce60-aee8-11e1-b84b-0002a5d5c51b",
-        "560f1420-aee8-11e1-8184-0002a5d5c51b",
-    }},
+    .rx_channel_uuids =
+        {
+            "49123040-aee8-11e1-a74d-0002a5d5c51b",
+            "4d0bf320-aee8-11e1-a0d9-0002a5d5c51b",
+            "5128ce60-aee8-11e1-b84b-0002a5d5c51b",
+            "560f1420-aee8-11e1-8184-0002a5d5c51b",
+        },
     .rx_channel_count = 4,
-    .tx_channel_uuids = {{
-        "db5b55e0-aee7-11e1-965e-0002a5d5c51b",
-        "e0b8a060-aee7-11e1-92f4-0002a5d5c51b",
-        "0ae12b00-aee8-11e1-a192-0002a5d5c51b",
-        "10e1ba60-aee8-11e1-89e5-0002a5d5c51b",
-    }},
+    .tx_channel_uuids =
+        {
+            "db5b55e0-aee7-11e1-965e-0002a5d5c51b",
+            "e0b8a060-aee7-11e1-92f4-0002a5d5c51b",
+            "0ae12b00-aee8-11e1-a192-0002a5d5c51b",
+            "10e1ba60-aee8-11e1-89e5-0002a5d5c51b",
+        },
     .tx_channel_count = 4,
     .unlock_characteristic_uuid = "b305b680-aee7-11e1-a730-0002a5d5c51b",
 };
 
 const OmronGattCapabilities OMRON_MODERN_GATT = {
     .parent_service_uuid = "0000fe4a-0000-1000-8000-00805f9b34fb",
-    .rx_channel_uuids = {{
-        "49123040-aee8-11e1-a74d-0002a5d5c51b",
-        nullptr,
-        nullptr,
-        nullptr,
-    }},
+    .rx_channel_uuids =
+        {
+            "49123040-aee8-11e1-a74d-0002a5d5c51b",
+            nullptr,
+            nullptr,
+            nullptr,
+        },
     .rx_channel_count = 1,
-    .tx_channel_uuids = {{
-        "db5b55e0-aee7-11e1-965e-0002a5d5c51b",
-        nullptr,
-        nullptr,
-        nullptr,
-    }},
+    .tx_channel_uuids =
+        {
+            "db5b55e0-aee7-11e1-965e-0002a5d5c51b",
+            nullptr,
+            nullptr,
+            nullptr,
+        },
     .tx_channel_count = 1,
     .unlock_characteristic_uuid = "b305b680-aee7-11e1-a730-0002a5d5c51b",
 };

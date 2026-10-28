@@ -139,7 +139,7 @@ bool apply_birth_date(uint8_t *block, const OmronDateTime &date) {
 uint8_t user_marker_bit(uint8_t user_number) {
   if (user_number < 1 || user_number > 8)
     return 0;
-  return static_cast<uint8_t>(1u << (user_number - 1));
+  return static_cast<uint8_t>(1u << (user_number - 1u));
 }
 
 // The window has to hold the six fields and still leave the checksum two bytes
@@ -330,7 +330,7 @@ SettingsWriteError build_session_settings_writes(const OmronProfile &profile, co
   for (size_t i = 0; i < USER_POINTER_SIZE; i++)
     buffer[pointer_field + i] = USER_POINTER_REGISTERED[i];
   for (uint8_t user = 1; user <= profile.user_count && user <= OMRON_MAX_USERS; user++) {
-    if ((update.collected_users & (1U << (user - 1))) == 0)
+    if ((update.collected_users & (1U << (user - 1U))) == 0)
       continue;
     const size_t field = user_pointer_field(profile, user);
     if (field + USER_POINTER_SIZE > first.offset)
@@ -377,8 +377,10 @@ SettingsWriteError build_session_settings_writes(const OmronProfile &profile, co
 
   // The clock goes out marked in every session, carrying the wall clock of the
   // moment when there is one to carry.
-  const OmronSettingsBlock window{profile.time_region_start,
-                                  static_cast<uint8_t>(profile.time_region_end - profile.time_region_start)};
+  const OmronSettingsBlock window{
+      profile.time_region_start,
+      static_cast<uint8_t>(profile.time_region_end - profile.time_region_start),
+  };
   buffer[window.offset + USER_MARKER_IN_CLOCK] = user_marker_bit(update.user_number);
   if (update.clock.has_value())
     apply_clock_fields(buffer.data() + window.offset, profile.clock_fields_offset, *update.clock);

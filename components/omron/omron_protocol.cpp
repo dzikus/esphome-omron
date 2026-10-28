@@ -36,7 +36,7 @@ ProtocolError parse_response(std::span<const uint8_t> frame, ResponseFrame &resp
   if (xor_bytes(frame) != 0)
     return ProtocolError::CHECKSUM_MISMATCH;
 
-  const uint16_t raw_type = static_cast<uint16_t>((static_cast<uint16_t>(frame[1]) << 8) | frame[2]);
+  const uint16_t raw_type = static_cast<uint16_t>((static_cast<uint32_t>(frame[1]) << 8) | frame[2]);
   if (raw_type != static_cast<uint16_t>(PacketType::START_RESPONSE) &&
       raw_type != static_cast<uint16_t>(PacketType::READ_RESPONSE) &&
       raw_type != static_cast<uint16_t>(PacketType::WRITE_RESPONSE) &&
@@ -65,7 +65,7 @@ ProtocolError parse_response(std::span<const uint8_t> frame, ResponseFrame &resp
   }
 
   response.type = static_cast<PacketType>(raw_type);
-  response.address = static_cast<uint16_t>((static_cast<uint16_t>(frame[FRAME_ADDRESS_OFFSET]) << 8) |
+  response.address = static_cast<uint16_t>((static_cast<uint32_t>(frame[FRAME_ADDRESS_OFFSET]) << 8) |
                                            frame[FRAME_ADDRESS_OFFSET + 1]);
   response.status = raw_type == static_cast<uint16_t>(PacketType::END_RESPONSE) || unwritten ? frame[6] : 0;
   response.data.clear();

@@ -5,7 +5,7 @@
 namespace esphome::omron {
 
 static uint16_t read_u16_le(std::span<const uint8_t> data) {
-  return static_cast<uint16_t>(data[0]) | (static_cast<uint16_t>(data[1]) << 8);
+  return static_cast<uint16_t>(data[0] | (static_cast<uint32_t>(data[1]) << 8));
 }
 
 bool decode_ieee11073_sfloat(uint16_t raw, float &value) {
@@ -16,7 +16,7 @@ bool decode_ieee11073_sfloat(uint16_t raw, float &value) {
   int16_t mantissa = static_cast<int16_t>(raw & 0x0FFF);
   if (mantissa >= 0x0800)
     mantissa = static_cast<int16_t>(mantissa - 0x1000);
-  int8_t exponent = static_cast<int8_t>((raw >> 12) & 0x0F);
+  int8_t exponent = static_cast<int8_t>(raw >> 12);
   if (exponent >= 0x08)
     exponent = static_cast<int8_t>(exponent - 0x10);
   value = static_cast<float>(mantissa) * std::pow(10.0f, static_cast<float>(exponent));
@@ -113,7 +113,7 @@ bool parse_standard_bp_features(std::span<const uint8_t> data, StandardBpFeature
   // rather than a wider field to sign up for.
   if (data.size() != 2)
     return false;
-  const uint16_t raw = static_cast<uint16_t>(data[0] | (static_cast<uint16_t>(data[1]) << 8));
+  const uint16_t raw = read_u16_le(data);
   features.raw = raw;
   features.body_movement = (raw & 0x0001) != 0;
   features.cuff_fit = (raw & 0x0002) != 0;

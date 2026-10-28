@@ -134,7 +134,7 @@ class OmronBLEClient final : public esp32_ble_client::BLEClientBase,
   // registers nobody - a shape no other host sends.
   void allow_birth_date_write(uint8_t user_number) {
     if (user_number >= 1 && user_number <= OMRON_MAX_USERS)
-      this->write_birth_date_users_ |= static_cast<uint8_t>(1U << (user_number - 1));
+      this->write_birth_date_users_ |= static_cast<uint8_t>(1U << (user_number - 1U));
   }
   void set_full_read_on_pairing(bool full_read) { this->full_read_on_pairing_ = full_read; }
   void set_bond_cleanup_timeout(uint32_t timeout_ms) { this->bond_cleanup_.set_timeout_ms(timeout_ms); }
@@ -289,12 +289,14 @@ class OmronBLEClient final : public esp32_ble_client::BLEClientBase,
   // ESPTime's fields are already local wall clock, which is the same thing the
   // cuff stores. Its timestamp is not: that one is UTC.
   static OmronDateTime local_now_(const ESPTime &now) {
-    return OmronDateTime{now.year,
-                         static_cast<uint8_t>(now.month),
-                         static_cast<uint8_t>(now.day_of_month),
-                         static_cast<uint8_t>(now.hour),
-                         static_cast<uint8_t>(now.minute),
-                         static_cast<uint8_t>(now.second)};
+    return OmronDateTime{
+        now.year,
+        static_cast<uint8_t>(now.month),
+        static_cast<uint8_t>(now.day_of_month),
+        static_cast<uint8_t>(now.hour),
+        static_cast<uint8_t>(now.minute),
+        static_cast<uint8_t>(now.second),
+    };
   }
 #endif
   // Whether a key slot holds anything, for a log line that must not carry the

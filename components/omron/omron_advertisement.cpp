@@ -28,7 +28,8 @@ void read_user_sequences(std::span<const uint8_t> payload, size_t first_offset, 
     const size_t offset = first_offset + static_cast<size_t>(index) * stride;
     if (offset + 1 >= payload.size())
       return;
-    flags.user_sequence[index] = static_cast<uint16_t>(payload[offset] | (payload[offset + 1] << 8));
+    flags.user_sequence[index] =
+        static_cast<uint16_t>(payload[offset] | (static_cast<uint32_t>(payload[offset + 1]) << 8));
     flags.sequence_count = static_cast<uint8_t>(index + 1);
   }
 }

@@ -21,6 +21,13 @@ static const char *const TAG = "omron.ble";
 
 namespace {
 
+constexpr esp_gatt_char_prop_t PROP_WRITE = ESP_GATT_CHAR_PROP_BIT_WRITE;
+constexpr esp_gatt_char_prop_t PROP_WRITE_NR = ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
+constexpr esp_gatt_char_prop_t PROP_NOTIFY = ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+constexpr esp_gatt_char_prop_t PROP_INDICATE = ESP_GATT_CHAR_PROP_BIT_INDICATE;
+constexpr esp_gatt_char_prop_t PROP_ANY_WRITE = PROP_WRITE | PROP_WRITE_NR;
+constexpr esp_gatt_char_prop_t PROP_ANY_NOTIFY = PROP_NOTIFY | PROP_INDICATE;
+
 int8_t hex_nibble(char value) {
   if (value >= '0' && value <= '9')
     return static_cast<int8_t>(value - '0');
@@ -45,7 +52,7 @@ void OmronBLEClient::set_bind_key(const std::string &bind_key) {
       this->bind_key_.fill(0);
       return;
     }
-    this->bind_key_[index] = static_cast<uint8_t>((high << 4) | low);
+    this->bind_key_[index] = static_cast<uint8_t>(high * 16 + low);
   }
   this->bind_key_set_ = true;
 }
@@ -343,15 +350,13 @@ void OmronBLEClient::loop() {
 bool OmronBLEClient::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
   const bool is_our_cuff = device.address_uint64() == this->get_address();
   const uint32_t now = millis();
-  if (is_our_cuff) {
-    // Read from every advertisement but published far more rarely. An awake
-    // cuff advertises several times a second, and publishing each one buries the
-    // log and the recorder under a diagnostic nobody reads at that resolution.
-    if (!this->rssi_published_ || now - this->rssi_published_at_ >= RSSI_PUBLISH_INTERVAL_MS) {
-      this->rssi_published_ = true;
-      this->rssi_published_at_ = now;
-      this->entities_.publish_rssi_entity_(static_cast<float>(device.get_rssi()));
-    }
+  // Read from every advertisement but published far more rarely. An awake
+  // cuff advertises several times a second, and publishing each one buries the
+  // log and the recorder under a diagnostic nobody reads at that resolution.
+  if (is_our_cuff && (!this->rssi_published_ || now - this->rssi_published_at_ >= RSSI_PUBLISH_INTERVAL_MS)) {
+    this->rssi_published_ = true;
+    this->rssi_published_at_ = now;
+    this->entities_.publish_rssi_entity_(static_cast<float>(device.get_rssi()));
   }
   if (!this->ble_user_enabled_)
     return false;
@@ -720,7 +725,7 @@ void OmronBLEClient::start_discovery_() {
 }
 
 bool OmronBLEClient::add_notify_target_(uint16_t characteristic_handle, bool required) {
-  auto *descriptor = this->get_config_descriptor(characteristic_handle);
+  const auto *descriptor = this->get_config_descriptor(characteristic_handle);
   if (descriptor == nullptr) {
     if (required)
       ESP_LOGE(TAG, "[%s] Required characteristic 0x%04x has no CCCD", this->address_str(), characteristic_handle);
@@ -854,10 +859,9 @@ bool OmronBLEClient::resolve_gatt_and_subscribe_() {
       this->fail_session_("Profile has a null RX UUID");
       return false;
     }
-    auto *characteristic = this->get_characteristic(
+    const auto *characteristic = this->get_characteristic(
         service_uuid, esp32_ble_tracker::ESPBTUUID::from_raw(std::string(gatt.rx_channel_uuids[channel])));
-    if (characteristic == nullptr ||
-        (characteristic->properties & (ESP_GATT_CHAR_PROP_BIT_NOTIFY | ESP_GATT_CHAR_PROP_BIT_INDICATE)) == 0) {
+    if (characteristic == nullptr || (characteristic->properties & PROP_ANY_NOTIFY) == 0) {
       this->fail_session_("Required Omron RX characteristic is missing or cannot notify");
       return false;
     }
@@ -873,10 +877,9 @@ bool OmronBLEClient::resolve_gatt_and_subscribe_() {
       this->fail_session_("Profile has a null TX UUID");
       return false;
     }
-    auto *characteristic = this->get_characteristic(
+    const auto *characteristic = this->get_characteristic(
         service_uuid, esp32_ble_tracker::ESPBTUUID::from_raw(std::string(gatt.tx_channel_uuids[channel])));
-    if (characteristic == nullptr ||
-        (characteristic->properties & (ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_WRITE_NR)) == 0) {
+    if (characteristic == nullptr || (characteristic->properties & PROP_ANY_WRITE) == 0) {
       this->fail_session_("Required Omron TX characteristic is missing or not writable");
       return false;
     }
@@ -895,11 +898,10 @@ bool OmronBLEClient::resolve_gatt_and_subscribe_() {
       this->fail_session_("Profile requires unlock but has no unlock UUID");
       return false;
     }
-    auto *characteristic = this->get_characteristic(
+    const auto *characteristic = this->get_characteristic(
         service_uuid, esp32_ble_tracker::ESPBTUUID::from_raw(std::string(gatt.unlock_characteristic_uuid)));
-    if (characteristic == nullptr ||
-        (characteristic->properties & (ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_WRITE_NR)) == 0 ||
-        (characteristic->properties & (ESP_GATT_CHAR_PROP_BIT_NOTIFY | ESP_GATT_CHAR_PROP_BIT_INDICATE)) == 0) {
+    if (characteristic == nullptr || (characteristic->properties & PROP_ANY_WRITE) == 0 ||
+        (characteristic->properties & PROP_ANY_NOTIFY) == 0) {
       this->fail_session_("Required Omron unlock characteristic is missing or has incompatible properties");
       return false;
     }
@@ -940,12 +942,12 @@ bool OmronBLEClient::resolve_gatt_and_subscribe_() {
 // whether the cuff offers the characteristic at all is the first thing anyone
 // asks about a measurement that never arrives.
 bool OmronBLEClient::subscribe_standard_measurement_(bool required) {
-  auto *standard_bp = this->get_characteristic(0x1810, 0x2A35);
+  const auto *standard_bp = this->get_characteristic(0x1810, 0x2A35);
   if (standard_bp == nullptr) {
     ESP_LOGD(TAG, "[%s] No standard blood pressure measurement characteristic", this->address_str());
     return false;
   }
-  if ((standard_bp->properties & (ESP_GATT_CHAR_PROP_BIT_NOTIFY | ESP_GATT_CHAR_PROP_BIT_INDICATE)) == 0) {
+  if ((standard_bp->properties & PROP_ANY_NOTIFY) == 0) {
     ESP_LOGD(TAG, "[%s] Standard blood pressure characteristic cannot notify", this->address_str());
     return false;
   }
@@ -969,10 +971,12 @@ struct DeviceInformationRead {
   uint16_t service;
   uint16_t characteristic;
 };
-constexpr DeviceInformationRead DEVICE_INFORMATION_CHARACTERISTICS[] = {{.service = 0x180A, .characteristic = 0x2A24},
-                                                                        {.service = 0x180A, .characteristic = 0x2A26},
-                                                                        {.service = 0x180A, .characteristic = 0x2A25},
-                                                                        {.service = 0x1810, .characteristic = 0x2A49}};
+constexpr DeviceInformationRead DEVICE_INFORMATION_CHARACTERISTICS[] = {
+    {.service = 0x180A, .characteristic = 0x2A24},
+    {.service = 0x180A, .characteristic = 0x2A26},
+    {.service = 0x180A, .characteristic = 0x2A25},
+    {.service = 0x1810, .characteristic = 0x2A49},
+};
 }  // namespace
 
 void OmronBLEClient::start_device_information_() {
@@ -986,7 +990,7 @@ void OmronBLEClient::request_next_device_information_() {
   while (this->device_information_index_ < std::size(DEVICE_INFORMATION_CHARACTERISTICS)) {
     const DeviceInformationRead &target = DEVICE_INFORMATION_CHARACTERISTICS[this->device_information_index_];
     const uint16_t uuid = target.characteristic;
-    auto *characteristic = this->get_characteristic(target.service, uuid);
+    const auto *characteristic = this->get_characteristic(target.service, uuid);
     if (characteristic == nullptr) {
       ESP_LOGD(TAG, "[%s] Device information 0x%04X absent", this->address_str(), uuid);
       this->device_information_index_++;
@@ -1335,8 +1339,8 @@ WriteDispatch OmronBLEClient::dispatch_next_write_() {
 
   const bool prefer_no_response =
       this->outgoing_prefer_no_response_ || (!unlock_channel && this->tx_handle_count_ == 1);
-  const bool accepts_no_response = (properties & ESP_GATT_CHAR_PROP_BIT_WRITE_NR) != 0;
-  const bool accepts_response = (properties & ESP_GATT_CHAR_PROP_BIT_WRITE) != 0;
+  const bool accepts_no_response = (properties & PROP_WRITE_NR) != 0;
+  const bool accepts_response = (properties & PROP_WRITE) != 0;
   if (!accepts_no_response && !accepts_response) {
     ESP_LOGE(TAG, "[%s] Selected GATT characteristic is not writable", this->address_str());
     return WriteDispatch::FAILED;
@@ -1812,9 +1816,14 @@ void OmronBLEClient::publish_standard_measurement_(std::span<const uint8_t> data
   // than filed under slot one.
   std::string timestamp;
   if (measurement.has_timestamp) {
-    timestamp = this->format_local_datetime_(OmronDateTime{measurement.timestamp.year, measurement.timestamp.month,
-                                                           measurement.timestamp.day, measurement.timestamp.hour,
-                                                           measurement.timestamp.minute, measurement.timestamp.second});
+    timestamp = this->format_local_datetime_(OmronDateTime{
+        measurement.timestamp.year,
+        measurement.timestamp.month,
+        measurement.timestamp.day,
+        measurement.timestamp.hour,
+        measurement.timestamp.minute,
+        measurement.timestamp.second,
+    });
   }
   uint8_t user_index = 0;
   OmronEntityData entity;
@@ -1922,7 +1931,7 @@ void OmronBLEClient::fail_session_(const char *reason, int code) {
   // dropping the link does not close it. Whatever went wrong up here, the
   // device should not be left showing an error to whoever walks past it.
   if (this->close_memory_session_()) {
-    this->set_timeout("teardown", END_TEARDOWN_DELAY_MS, [this]() { this->disconnect(); });
+    this->set_timeout("teardown", END_TEARDOWN_DELAY_MS, [this] { this->disconnect(); });
     return;
   }
   this->disconnect();
@@ -1943,7 +1952,7 @@ bool OmronBLEClient::close_memory_session_() {
   auto frame = make_end_request();
   const esp_gatt_char_prop_t properties = this->tx_properties_[0];
   const esp_gatt_write_type_t write_type =
-      (properties & ESP_GATT_CHAR_PROP_BIT_WRITE) != 0 ? ESP_GATT_WRITE_TYPE_RSP : ESP_GATT_WRITE_TYPE_NO_RSP;
+      (properties & PROP_WRITE) != 0 ? ESP_GATT_WRITE_TYPE_RSP : ESP_GATT_WRITE_TYPE_NO_RSP;
   const esp_err_t error =
       esp_ble_gattc_write_char(this->gattc_if_, this->conn_id_, this->tx_handles_[0],
                                static_cast<uint16_t>(frame.size()), frame.data(), write_type, ESP_GATT_AUTH_REQ_NONE);
