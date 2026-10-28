@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:3.14@sha256:28835c112fd097cb6d2fe1e195b660d66ae051859070a9b871fa2308f35897d3
+FROM mcr.microsoft.com/devcontainers/python:3.15@sha256:4e9aee4b9498b21ecb00e3049ea050ae90d2dbe735ccac7f7f796f0ddc03d9fb
 
 USER root
 COPY requirements.txt /tmp/requirements.txt
