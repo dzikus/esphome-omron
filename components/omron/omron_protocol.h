@@ -90,8 +90,16 @@ constexpr std::array<uint8_t, 8> make_start_request() {
 }
 
 constexpr std::array<uint8_t, 8> make_read_request(uint16_t address, uint8_t length) {
-  return sealed_frame({0x08, REQUEST_READ_HIGH, REQUEST_READ_LOW, static_cast<uint8_t>(address >> 8),
-                       static_cast<uint8_t>(address & 0xFF), length, 0x00, 0x00});
+  return sealed_frame({
+      0x08,
+      REQUEST_READ_HIGH,
+      REQUEST_READ_LOW,
+      static_cast<uint8_t>(address >> 8),
+      static_cast<uint8_t>(address & 0xFF),
+      length,
+      0x00,
+      0x00,
+  });
 }
 
 constexpr std::array<uint8_t, 8> make_end_request() {

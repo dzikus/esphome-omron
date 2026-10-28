@@ -740,7 +740,7 @@ bool OmronSession::maybe_queue_registration_writes_() {
   // whose checksum does not reproduce, and skips a date already stored, so this
   // costs one EEPROM write once rather than one per session forever.
   for (uint8_t user = 1; user <= OMRON_MAX_USERS; user++) {
-    if ((this->config_.write_birth_date_users & (1U << (user - 1))) == 0)
+    if ((this->config_.write_birth_date_users & (1U << (user - 1U))) == 0)
       continue;
     const OmronDateTime &configured = this->config_.birth_dates[user - 1];
     if (configured.year != 0)

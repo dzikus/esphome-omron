@@ -1,6 +1,7 @@
 #include "omron_publish.h"
 
 #include <cmath>
+#include <utility>
 
 #include "omron_metrics.h"
 
@@ -199,7 +200,7 @@ StandardPublishDecision standard_measurement_entity(const StandardBloodPressureM
     entity.mark_available(OmronEntityCapability::IRREGULAR_PULSE);
     entity.mark_available(OmronEntityCapability::IMPROPER_POSITION);
   }
-  out = entity;
+  out = std::move(entity);
   return StandardPublishDecision::PUBLISH;
 }
 
@@ -254,7 +255,7 @@ bool settings_entity_for_user(const OmronProfile &profile, uint8_t user_number, 
     published.version = user_settings_version(profile, user_number, settings);
     published.mark_available(OmronEntityCapability::SETTINGS_VERSION);
   }
-  out = published;
+  out = std::move(published);
   return true;
 }
 

@@ -79,7 +79,7 @@ enum class RecordFormat : uint8_t {
 // is indistinguishable from a correct answer, so a model that reports no cuff
 // fit must not get a "Cuff fit" entity. Movement and irregular are the only two
 // every model in the catalog carries; the other four each go missing somewhere.
-using MeasurementFields = uint8_t;
+using MeasurementFields = uint32_t;
 inline constexpr MeasurementFields MEASUREMENT_FIELD_CUFF = 1 << 0;
 inline constexpr MeasurementFields MEASUREMENT_FIELD_MOVEMENT = 1 << 1;
 inline constexpr MeasurementFields MEASUREMENT_FIELD_IRREGULAR = 1 << 2;

@@ -73,51 +73,96 @@ using RecordFlag = PublishRow<OmronEntityData, binary_sensor::BinarySensor, bool
 using RecordText = PublishRow<OmronEntityData, text_sensor::TextSensor, const std::string &>;
 
 constexpr RecordNumber RECORD_NUMBERS[] = {
-    {OmronEntityCapability::SYSTOLIC, &OmronUserEntities::systolic,
-     [](const OmronEntityData &data) { return static_cast<float>(data.systolic); }},
-    {OmronEntityCapability::DIASTOLIC, &OmronUserEntities::diastolic,
-     [](const OmronEntityData &data) { return static_cast<float>(data.diastolic); }},
-    {OmronEntityCapability::PULSE, &OmronUserEntities::pulse,
-     [](const OmronEntityData &data) { return static_cast<float>(data.pulse); }},
-    {OmronEntityCapability::USER, &OmronUserEntities::measurement_user,
-     [](const OmronEntityData &data) { return static_cast<float>(data.user); }},
-    {OmronEntityCapability::SEQUENCE, &OmronUserEntities::measurement_sequence,
-     [](const OmronEntityData &data) { return static_cast<float>(data.sequence); }},
-    {OmronEntityCapability::CONSECUTIVE_MEASUREMENT, &OmronUserEntities::consecutive_measurement,
-     [](const OmronEntityData &data) { return static_cast<float>(data.consecutive_measurement); }},
-    {OmronEntityCapability::ARTIFACT_DETECTION, &OmronUserEntities::artifact_detection,
-     [](const OmronEntityData &data) { return static_cast<float>(data.artifact_detection); }},
-    {OmronEntityCapability::IHB_DETECTION, &OmronUserEntities::ihb_detection,
-     [](const OmronEntityData &data) { return static_cast<float>(data.ihb_detection); }},
+    {
+        OmronEntityCapability::SYSTOLIC,
+        &OmronUserEntities::systolic,
+        [](const OmronEntityData &data) { return static_cast<float>(data.systolic); },
+    },
+    {
+        OmronEntityCapability::DIASTOLIC,
+        &OmronUserEntities::diastolic,
+        [](const OmronEntityData &data) { return static_cast<float>(data.diastolic); },
+    },
+    {
+        OmronEntityCapability::PULSE,
+        &OmronUserEntities::pulse,
+        [](const OmronEntityData &data) { return static_cast<float>(data.pulse); },
+    },
+    {
+        OmronEntityCapability::USER,
+        &OmronUserEntities::measurement_user,
+        [](const OmronEntityData &data) { return static_cast<float>(data.user); },
+    },
+    {
+        OmronEntityCapability::SEQUENCE,
+        &OmronUserEntities::measurement_sequence,
+        [](const OmronEntityData &data) { return static_cast<float>(data.sequence); },
+    },
+    {
+        OmronEntityCapability::CONSECUTIVE_MEASUREMENT,
+        &OmronUserEntities::consecutive_measurement,
+        [](const OmronEntityData &data) { return static_cast<float>(data.consecutive_measurement); },
+    },
+    {
+        OmronEntityCapability::ARTIFACT_DETECTION,
+        &OmronUserEntities::artifact_detection,
+        [](const OmronEntityData &data) { return static_cast<float>(data.artifact_detection); },
+    },
+    {
+        OmronEntityCapability::IHB_DETECTION,
+        &OmronUserEntities::ihb_detection,
+        [](const OmronEntityData &data) { return static_cast<float>(data.ihb_detection); },
+    },
 };
 
 constexpr RecordFlag RECORD_FLAGS[] = {
-    {OmronEntityCapability::CUFF_FIT, &OmronUserEntities::cuff_fit,
-     [](const OmronEntityData &data) { return data.cuff_fit; }},
-    {OmronEntityCapability::BODY_MOVEMENT, &OmronUserEntities::body_movement,
-     [](const OmronEntityData &data) { return data.body_movement; }},
-    {OmronEntityCapability::IRREGULAR_PULSE, &OmronUserEntities::irregular_pulse,
-     [](const OmronEntityData &data) { return data.irregular_pulse; }},
-    {OmronEntityCapability::IMPROPER_POSITION, &OmronUserEntities::improper_position,
-     [](const OmronEntityData &data) { return data.improper_position; }},
+    {
+        OmronEntityCapability::CUFF_FIT,
+        &OmronUserEntities::cuff_fit,
+        [](const OmronEntityData &data) { return data.cuff_fit; },
+    },
+    {
+        OmronEntityCapability::BODY_MOVEMENT,
+        &OmronUserEntities::body_movement,
+        [](const OmronEntityData &data) { return data.body_movement; },
+    },
+    {
+        OmronEntityCapability::IRREGULAR_PULSE,
+        &OmronUserEntities::irregular_pulse,
+        [](const OmronEntityData &data) { return data.irregular_pulse; },
+    },
+    {
+        OmronEntityCapability::IMPROPER_POSITION,
+        &OmronUserEntities::improper_position,
+        [](const OmronEntityData &data) { return data.improper_position; },
+    },
 };
 
 constexpr RecordText RECORD_TEXTS[] = {
-    {OmronEntityCapability::TIMESTAMP, &OmronUserEntities::measurement_timestamp,
-     [](const OmronEntityData &data) -> const std::string & { return data.timestamp; }},
+    {
+        OmronEntityCapability::TIMESTAMP,
+        &OmronUserEntities::measurement_timestamp,
+        [](const OmronEntityData &data) -> const std::string & { return data.timestamp; },
+    },
 };
 
 using SettingsNumber = PublishRow<OmronUserSettingsData, sensor::Sensor, float>;
 using SettingsText = PublishRow<OmronUserSettingsData, text_sensor::TextSensor, const std::string &>;
 
 constexpr SettingsNumber SETTINGS_NUMBERS[] = {
-    {OmronEntityCapability::SETTINGS_VERSION, &OmronUserEntities::settings_version,
-     [](const OmronUserSettingsData &data) { return static_cast<float>(data.version); }},
+    {
+        OmronEntityCapability::SETTINGS_VERSION,
+        &OmronUserEntities::settings_version,
+        [](const OmronUserSettingsData &data) { return static_cast<float>(data.version); },
+    },
 };
 
 constexpr SettingsText SETTINGS_TEXTS[] = {
-    {OmronEntityCapability::BIRTH_DATE, &OmronUserEntities::birth_date,
-     [](const OmronUserSettingsData &data) -> const std::string & { return data.birth_date; }},
+    {
+        OmronEntityCapability::BIRTH_DATE,
+        &OmronUserEntities::birth_date,
+        [](const OmronUserSettingsData &data) -> const std::string & { return data.birth_date; },
+    },
 };
 
 // The point of the tables. A capability granted by a profile but wired to no

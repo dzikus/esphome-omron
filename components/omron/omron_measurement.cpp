@@ -78,8 +78,8 @@ static MeasurementParseError parse_classic_vital_14(std::span<const uint8_t> dat
   if (raw_systolic > 0xE1)
     return MeasurementParseError::EMPTY_SLOT;
 
-  const uint16_t flags1 = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
-  const uint16_t flags2 = static_cast<uint16_t>(data[6]) | (static_cast<uint16_t>(data[7]) << 8);
+  const uint32_t flags1 = data[4] | (static_cast<uint32_t>(data[5]) << 8);
+  const uint32_t flags2 = data[6] | (static_cast<uint32_t>(data[7]) << 8);
   if (data[1] == 0 && data[2] == 0 && (data[3] & 0x3F) == 0 && flags1 == 0 && flags2 == 0)
     return MeasurementParseError::EMPTY_SLOT;
 
@@ -104,7 +104,7 @@ static MeasurementParseError parse_classic_vital_14(std::span<const uint8_t> dat
   // Byte 9, two nibbles: artifact low, IHB high.
   if (data.size() > 9) {
     candidate.artifact_detection = static_cast<uint8_t>(data[9] & 0x0F);
-    candidate.ihb_detection = static_cast<uint8_t>((data[9] >> 4) & 0x0F);
+    candidate.ihb_detection = static_cast<uint8_t>(data[9] >> 4);
   }
 
   // The record number is not read here. It comes from the offset the profile
@@ -163,7 +163,7 @@ static MeasurementParseError parse_plain_date_vital(std::span<const uint8_t> dat
   // Movement is the low pair and the irregular beat the high one. Easy to swap,
   // and swapped in more than one place that documents this family.
   candidate.movement_detected = (data[11] & 0x03) == 1;
-  candidate.irregular_heartbeat = ((data[11] >> 2) & 0x03) == 1;
+  candidate.irregular_heartbeat = (static_cast<uint8_t>(data[11] >> 2) & 0x03) == 1;
   // Whole bytes here rather than the nibbles the packed families use.
   candidate.artifact_detection = data[9];
   candidate.ihb_detection = data[10];
@@ -218,7 +218,7 @@ MeasurementParseError parse_measurement_record(std::span<const uint8_t> data, co
   if (sequence_offset != NO_RECORD_SEQUENCE && static_cast<size_t>(sequence_offset) + 2 <= data.size()) {
     measurement.has_record_id = true;
     measurement.record_id =
-        static_cast<uint16_t>(data[sequence_offset]) | (static_cast<uint16_t>(data[sequence_offset + 1]) << 8);
+        static_cast<uint16_t>(data[sequence_offset] | (static_cast<uint32_t>(data[sequence_offset + 1]) << 8));
   }
   return MeasurementParseError::NONE;
 }
