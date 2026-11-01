@@ -247,7 +247,7 @@ startup:
 |---|---|---|
 | `hardware verified` | 1 | read off a real cuff of that model |
 | `reference tested` | 9 | another project reports the model as working |
-| `transcribed from a catalog` | 28 | the map has not been confirmed on that device by anyone in the chain |
+| `transcribed from a catalog` | 27 | the map has not been confirmed on that device by anyone in the chain |
 
 The last group is the majority, and those profiles log a warning every boot for
 that reason. **If your model is in that group, compare the first few readings
