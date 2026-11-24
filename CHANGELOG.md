@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.3.0 (2026-11-24)
+
+- The ESPHome floor is now 2026.11.0. ESPHome 2026.11 requires a `relation` on
+  every entry under `esphome: devices:` and 2026.10 rejects that key, so one
+  yaml cannot serve both; give each sub-device `relation: via`.
+- Builds on ESPHome 2026.11, where `helpers.h` no longer pulls in
+  `format_hex_pretty`.
+
 ## v1.2.0 (2026-09-23)
 
 - HEM-7361T uses the HEM-7342T profile, which shares its memory map.
