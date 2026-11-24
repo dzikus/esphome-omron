@@ -5,18 +5,22 @@
 
 esphome:
   name: omron-cuff
-  min_version: 2026.5.1
+  min_version: 2026.11.0
   # Sub-devices keep each person's measurements in their own Home Assistant
   # device, so the two histories stay apart. These names are also where the
   # entity names come from: with two people on one cuff, user 1's readings
-  # publish as "Alex systolic" and user 2's as "Sam systolic".
+  # publish as "Alex systolic" and user 2's as "Sam systolic". `relation: via`
+  # files each one as a device reached through this node.
   devices:
     - id: cuff_device
       name: "Cuff"
+      relation: via
     - id: user1_device
       name: "Alex"
+      relation: via
     - id: user2_device
       name: "Sam"
+      relation: via
 
 esp32:
   board: esp32dev

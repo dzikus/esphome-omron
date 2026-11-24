@@ -225,6 +225,9 @@ sensor:
     user: 1
 ```
 
+The `device_id` values name sub-devices declared under `esphome: devices:`, each
+with `relation: via`, as in [`example.yaml`](example.yaml).
+
 | per-user option | meaning |
 |---|---|
 | `device_id` | sub-device this person's entities file under |
@@ -247,7 +250,7 @@ startup:
 |---|---|---|
 | `hardware verified` | 1 | read off a real cuff of that model |
 | `reference tested` | 9 | another project reports the model as working |
-| `transcribed from a catalog` | 28 | the map has not been confirmed on that device by anyone in the chain |
+| `transcribed from a catalog` | 27 | the map has not been confirmed on that device by anyone in the chain |
 
 The last group is the majority, and those profiles log a warning every boot for
 that reason. **If your model is in that group, compare the first few readings
@@ -275,6 +278,11 @@ same as a map that is right.
   Nothing else is written, and no measurement is ever altered.
 
 ## Requirements
+
+ESPHome 2026.11.0 or newer. Set `esphome: { min_version: 2026.11.0 }` so an
+older install fails with that message rather than on the first sub-device: from
+2026.11 every entry under `esphome: devices:` needs a `relation`, and earlier
+releases reject the key.
 
 ESP32 with `esp32_ble_tracker`. The component runs its own GATT client and takes
 one connection slot. Bonding on ESP32 with these cuffs is delicate and the
