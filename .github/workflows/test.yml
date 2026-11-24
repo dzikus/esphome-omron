@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 permissions: {}
 env:
-  ESPHOME_FLOOR: "2026.5.1"
+  ESPHOME_FLOOR: "2026.11.0"
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -285,10 +285,10 @@ jobs:
           esphome config .github/ci-build.yaml
           esphome config .intellisense.yaml
       # A compile, not a config check. Validation only exercises the Python
-      # layer, and every version constraint this component actually has is in
-      # the C++: it subclasses BLEClientBase and overrides hooks that arrived in
-      # particular releases. A floor checked by `esphome config` alone reads as
-      # verified while being wrong by several releases.
+      # layer, and the C++ carries version constraints of its own: it
+      # subclasses BLEClientBase and overrides hooks that arrived in particular
+      # releases. A floor checked by `esphome config` alone reads as verified
+      # while being wrong by several releases.
       - name: Compile at the floor
         run: esphome compile .github/ci-build.yaml
       - name: Save the pip cache

@@ -6,16 +6,19 @@
 # secrets.yaml does not exist. The MAC is the all-zero placeholder.
 esphome:
   name: omron-intellisense
-  min_version: 2026.5.1
+  min_version: 2026.11.0
   # Two people, two sub-devices: the same shape the real configuration uses, so
   # the per-user codegen path is the one that gets compiled.
   devices:
     - id: cuff_device
       name: "Cuff"
+      relation: via
     - id: user1_device
       name: "Cuff user 1"
+      relation: via
     - id: user2_device
       name: "Cuff user 2"
+      relation: via
 
 esp32:
   board: esp32dev

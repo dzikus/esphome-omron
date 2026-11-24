@@ -10,19 +10,22 @@ substitutions:
 
 esphome:
   name: ci-build
-  # The oldest release this component compiles against, and the version the
-  # workflow's floor job builds. BLEClientBase::on_disconnect_complete, which
-  # OmronBLEClient overrides, does not exist before it.
-  min_version: 2026.5.1
+  # The component floor, and the version the workflow's floor job builds. A
+  # sub-device needs a relation from 2026.11.0, and earlier releases reject it.
+  min_version: 2026.11.0
   devices:
     - id: cuff_device
       name: "Cuff"
+      relation: via
     - id: user1_device
       name: "Cuff user 1"
+      relation: via
     - id: user2_device
       name: "Cuff user 2"
+      relation: via
     - id: second_cuff_device
       name: "CI second cuff"
+      relation: via
 
 esp32:
   board: ${board}
